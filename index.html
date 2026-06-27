@@ -45,10 +45,10 @@
         }
 
         function App() {
-          const [activeTab, setActiveTab] = React.useState('lich-lam-viec');
-          const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-          const [username, setUsername] = React.useState('');
-          const [password, setPassword] = React.useState('');
+          const [activeTab, setActiveTab] = React.useState('report-daily');
+          const [isLoggedIn, setIsLoggedIn] = React.useState(true);
+          const [username, setUsername] = React.useState('admin');
+          const [password, setPassword] = React.useState('123456');
           
           const [filterName, setFilterName] = React.useState('');
           const [filterMonth, setFilterMonth] = React.useState('');
@@ -180,10 +180,12 @@
 
             const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
             
-            // TÍNH NĂNG SUẤT BẰNG FC / TỔNG GIỜ CÔNG THỰC TẾ
+            // TÍNH NĂNG SUẤT TRONG BÁO CÁO (GIỮ NGUYÊN)
             const nang_suat_o = total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0;
 
-            // ĐÁP ỨNG ĐẠT VÀ THIẾU LOGIC KHỚP THEO MẪU TỔNG
+            // SỬA LẠI NĂNG SUẤT BẢNG ĐIỂM DANH THEO ĐÚNG LOGIC YÊU CẦU: FC / Tổng giờ công thực tế
+            const nang_suat_bang_diem_danh = total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0;
+
             const dapt_dat = tile_tong >= 100 ? 100 : tile_tong;
             const dapt_thieu = tile_tong >= 100 ? 0 : (100 - tile_tong);
 
@@ -222,7 +224,7 @@
               gctt_leader, gctt_nsuat, gctt_gcong, gctt_thuviec, gctt_fl_had, gctt_fl_viec,
               tile_leader, tile_nsuat, tile_gcong, tile_thuviec, tile_fl_had, tile_fl_viec,
               total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, nang_suat_o, reportText,
-              formatGctt, allHoursText, dapt_dat, dapt_thieu
+              formatGctt, allHoursText, dapt_dat, dapt_thieu, nang_suat_bang_diem_danh
             };
           }, [inputs]);
 
@@ -308,7 +310,7 @@
                     e('thead', null, 
                       e('tr', { className: 'bg-orange-500 text-white' }, 
                         e('th', { colSpan: 11, className: 'p-3 text-base font-black tracking-widest uppercase pl-24' }, 'ĐIỂM DANH SORT KTC 01'),
-                        e('th', { colSpan: 3, className: 'p-3 text-sm font-black border-l border-orange-400 font-mono tracking-wider' }, '27/06/2026')
+                        e('th', { colSpan: 2, className: 'p-3 text-sm font-black border-l border-orange-400 font-mono tracking-wider' }, '27/06/2026')
                       ),
                       e('tr', { className: 'bg-orange-500 text-white font-bold border-t border-orange-400 text-xs' }, 
                         ['Ca làm việc', 'Giờ vào', 'Giờ ra', 'Vị trí', 'Giờ Công', 'Tổng nhân sự', 'Số kế hoạch', 'Số Đáp ỨNG', 'Giờ Công Thực Tế', 'Thời Gian Bù - Trừ', 'Ghi Chú', 'Tỉ Lệ', 'Đáp Ứng Đạt', 'Đáp Ứng Thiếu'].map(h => e('th', { className: 'p-2 border border-orange-400 whitespace-nowrap' }, h))
@@ -334,9 +336,9 @@
                         e('td', { className: 'border font-mono font-bold text-black' }, computed.formatGctt(row.gctt)),
                         
                         // CÁC CỘT CÓ THỂ CO GIÃN TỰ ĐỘNG THEO TEXT ĐẦU VÀO
-                        e('td', { className: 'border px-1 min-w-[60px]' }, '0'),
-                        e('td', { className: 'border p-0 w-full min-w-[150px]' }, e('input', { type: 'text', className: 'w-full p-1 bg-transparent text-[11px] text-black focus:outline-none', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
-                        e('td', { className: 'border font-bold text-black px-1' }, row.tl + '%'),
+                        e('td', { className: 'border px-1 min-w-[100px]' }, '0'),
+                        e('td', { className: 'border p-0 w-full min-w-[200px]' }, e('input', { type: 'text', className: 'w-full p-1 bg-transparent text-[11px] text-black focus:outline-none', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
+                        e('td', { className: 'border font-bold text-black px-1 min-w-[50px]' }, row.tl + '%'),
                         
                         idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-xs text-black min-w-[70px]' }, computed.dapt_dat + '%'),
                         idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-xs text-black min-w-[70px]' }, computed.dapt_thieu + '%')
@@ -359,23 +361,21 @@
                         e('td', { className: 'border font-bold text-center text-xs text-red-600', rowSpan: 3 }, computed.dapt_thieu + '%')
                       ),
 
-                      // DÒNG BỔ SUNG 2 Tiêu đề: DAY | FC | NĂNG SUẤT (GIỚI HẠN NGANG CHUẨN VỚI 3 CỘT TRÊN)
+                      // DÒNG BỔ SUNG 2 Tiêu đề: DAY | FC | NĂNG SUẤT (KHÓA THẲNG HÀNG VỚI 3 CỘT TRÊN)
                       e('tr', { className: 'font-bold border-t border-slate-200 text-black text-[10px] bg-white' },
-                        e('td', { colSpan: 5, className: 'border bg-white' }),
-                        e('td', { className: 'border text-center bg-slate-50 font-black' }, 'Day'),
-                        e('td', { colSpan: 1, className: 'border text-center bg-slate-50 font-black' }, 'FC'),
-                        e('td', { className: 'border text-center bg-slate-50 font-black' }, 'Năng suất'),
-                        e('td', { colSpan: 3, className: 'border bg-white' })
+                        e('td', { colSpan: 9, className: 'border bg-white' }),
+                        e('td', { className: 'border text-center bg-slate-50 font-black min-w-[100px]' }, 'Day'),
+                        e('td', { className: 'border text-center bg-slate-50 font-black' }, 'FC'),
+                        e('td', { className: 'border text-center bg-slate-50 font-black min-w-[50px]' }, 'Năng suất')
                       ),
 
-                      // DÒNG BỔ SUNG 3 Giá trị: GIỚI HẠN CHUẨN NGANG VỚI THỜI GIAN BÙ - TRỪ, GHI CHÚ, TỈ LỆ
+                      // DÒNG BỔ SUNG 3 Giá trị: GIỚI HẠN CHUẨN NGANG KHÍT VỚI THỜI GIAN BÙ - TRỪ, GHI CHÚ, TỈ LỆ
                       e('tr', { className: 'font-bold border-t border-slate-200 text-black font-mono text-[11px] bg-white' },
-                        e('td', { colSpan: 5, className: 'border bg-white' }),
+                        e('td', { colSpan: 9, className: 'border bg-white' }),
                         e('td', { className: 'border text-center text-red-600 font-bold' }, '27/06/2026'),
-                        e('td', { colSpan: 1, className: 'border text-center text-black font-bold' }, inputs.forecast.toLocaleString()),
-                        // NĂNG SUẤT ĐÃ ĐƯỢC TÍNH BẰNG FC / TỔNG GIỜ CÔNG
-                        e('td', { className: 'border text-center text-red-600 font-black text-xs' }, computed.nang_suat_o),
-                        e('td', { colSpan: 3, className: 'border bg-white' })
+                        e('td', { className: 'border text-center text-black font-bold' }, inputs.forecast.toLocaleString()),
+                        // SỬA LẠI NĂNG SUẤT ĐỂ HIỂN THỊ CHUẨN XÁC GIÁ TRỊ TÍNH TOÁN
+                        e('td', { className: 'border text-center text-red-600 font-black text-xs bg-yellow-50' }, computed.nang_suat_bang_diem_danh)
                       )
                     )
                   )
