@@ -38,7 +38,6 @@
           }).filter(row => row.length > 0);
         }
 
-        // Hàm đổi chuỗi "HH:MM" ra số giờ thập phân
         function timeToHours(tStr) {
           if (!tStr || !tStr.includes(':')) return 0;
           const [h, m] = tStr.split(':').map(Number);
@@ -51,37 +50,28 @@
           const [username, setUsername] = React.useState('');
           const [password, setPassword] = React.useState('');
           
-          // Bộ lọc tìm kiếm
           const [filterName, setFilterName] = React.useState('');
           const [filterMonth, setFilterMonth] = React.useState('');
 
-          // Xử lý Lịch Làm Việc Tuần hiện tại
           const [allLichHeaders, setAllLichHeaders] = React.useState([]); 
           const [lichRows, setLichRows] = React.useState([]);       
-          const [weekOffset, setWeekOffset] = React.useState(0); // 0: Tuần này, -1: Tuần trước, 1: Tuần sau
+          const [weekOffset, setWeekOffset] = React.useState(0); 
 
           const [violationData, setViolationData] = React.useState([]);
           const [bienbanData, setBienbanData] = React.useState([]);
           const [isLoading, setIsLoading] = React.useState(true);
 
-          // State quản lý đúng form nhập tay rỗng và công thức nhảy số của Tiến
           const [inputs, setInputs] = React.useState({
-            // Hàng 1: Leader
             v_leader: '07:30', r_leader: '16:30', tns_leader: 3, skh_leader: 3, sdung_leader: 3, note_leader: '',
-            // Hàng 2: NV Năng suất
             v_nsuat: '07:00', r_nsuat: '16:30', tns_nsuat: 40, skh_nsuat: 31, sdung_nsuat: 31, note_nsuat: '',
-            // Hàng 3: NV Giờ công
             v_gcong: '07:00', r_gcong: '17:30', tns_gcong: 2, skh_gcong: 2, sdung_gcong: 2, note_gcong: '',
-            // Hàng 4: Thử việc
             v_thuviec: '07:30', r_thuviec: '16:30', tns_thuviec: 0, skh_thuviec: 0, sdung_thuviec: 0, note_thuviec: '',
-            // Hàng 5: FL Hoa Anh Đào
             v_fl_had: '08:00', r_fl_had: '17:00', tns_fl_had: 0, skh_fl_had: 0, sdung_fl_had: 0, note_fl_had: '',
-            // Hàng 6: FL Viecco
             v_fl_viec: '08:00', r_fl_viec: '17:00', tns_fl_viec: 0, skh_fl_viec: 0, sdung_fl_viec: 0, note_fl_viec: '',
 
-            // Sản lượng
             feeder_cbs1: 19701, feeder_cbs2: 37422, tron_lan: 1000, forecast: 65000,
-            hang_cho_ra: 2990, hang_cho_xuat: 40892, hang_lien_vung: 0, hang_noi_vung: 0
+            hang_cho_ra: 2990, hang_cho_xuat: 40892, hang_lien_vung: 0, hang_noi_vung: 0,
+            phat_sinh: 'Không'
           });
 
           React.useEffect(() => {
@@ -143,11 +133,9 @@
             setInputs(p => ({ ...p, [key]: isNum ? (parseFloat(value) || 0) : value }));
           };
 
-          // TOÀN BỘ CÔNG THỨC TỰ ĐỘNG TÍNH TOÁN THEO CÁC TIÊU CHÍ MỚI
           const computed = React.useMemo(() => {
             const i = inputs;
 
-            // Tính Giờ công = Giờ ra - Giờ vào - 1 tiếng nghỉ
             const calcGc = (v, r) => {
               const diff = timeToHours(r) - timeToHours(v);
               return diff > 1 ? diff - 1 : 0;
@@ -160,7 +148,6 @@
             const gc_fl_had = calcGc(i.v_fl_had, i.r_fl_had);
             const gc_fl_viec = calcGc(i.v_fl_viec, i.r_fl_viec);
 
-            // Giờ công thực tế = Giờ công đơn vị * Số đáp ứng
             const gctt_leader = gc_leader * i.sdung_leader;
             const gctt_nsuat = gc_nsuat * i.sdung_nsuat;
             const gctt_gcong = gc_gcong * i.sdung_gcong;
@@ -168,33 +155,44 @@
             const gctt_fl_had = gc_fl_had * i.sdung_fl_had;
             const gctt_fl_viec = gc_fl_viec * i.sdung_fl_viec;
 
-            // Tổng các cột
             const total_tns = i.tns_leader + i.tns_nsuat + i.tns_gcong + i.tns_thuviec + i.tns_fl_had + i.tns_fl_viec;
             const total_skh = i.skh_leader + i.skh_nsuat + i.skh_gcong + i.skh_thuviec + i.skh_fl_had + i.skh_fl_viec;
             const total_sdung = i.sdung_leader + i.sdung_nsuat + i.sdung_gcong + i.sdung_thuviec + i.sdung_fl_had + i.sdung_fl_viec;
             const total_gctt = gctt_leader + gctt_nsuat + gctt_gcong + gctt_thuviec + gctt_fl_had + gctt_fl_viec;
 
-            // Tính sản lượng Act = CBS1 + CBS2 + Tròn lăn
             const act_don = i.feeder_cbs1 + i.feeder_cbs2 + i.tron_lan;
-            const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
-            const nang_suat_o = total_gctt > 0 ? (act_don / total_gctt).toFixed(1) : 0;
+            
+            const tile_nsuat = i.skh_nsuat > 0 ? Math.round((i.sdung_nsuat / i.skh_nsuat) * 100) : 0;
+            const tile_gcong = i.skh_gcong > 0 ? Math.round((i.sdung_gcong / i.skh_gcong) * 100) : 0;
+            
+            const total_fl_skh = i.skh_fl_had + i.skh_fl_viec;
+            const total_fl_sdung = i.sdung_fl_had + i.sdung_fl_viec;
+            const tile_fl = total_fl_skh > 0 ? Math.round((total_fl_sdung / total_fl_skh) * 100) : 0;
 
-            // Nội dung chuỗi tổng hợp để copy tiện lợi nhanh chóng
-            const reportText = `BÁO CÁO CUỐI CA SORT KTC HCM 01\n` +
-                               `Ngày: 27/06/2026 | Ca: 07:00 - 16:00\n` +
-                               `-----------------------------------------\n` +
-                               `1/ LƯỢNG HÀNG:\n` +
-                               `• Forecast: ${i.forecast.toLocaleString()} đơn\n` +
-                               `• Act xử lý: ${act_don.toLocaleString()} đơn\n\n` +
-                               `2/ NHÂN SỰ ĐÁP ỨNG:\n` +
-                               `• NV Năng suất: 100% (${i.sdung_nsuat}/${i.skh_nsuat})\n` +
-                               `• NV Giờ công: 100% (${i.sdung_gcong}/${i.skh_gcong})\n` +
-                               `• Tỉ lệ chung: ${tile_tong}%\n\n` +
-                               `3/ NĂNG SUẤT ĐẠT: ${nang_suat_o} đơn/h\n\n` +
-                               `4/ HÀNG HOÁ TỒN TRỮ:\n` +
-                               `• Chờ rã: ${i.hang_cho_ra.toLocaleString()} đơn\n` +
-                               `• Khởi tạo chờ xuất: ${i.hang_cho_xuat.toLocaleString()} đơn\n` +
-                               `• Liên vùng trước 15h: ${i.hang_lien_vung} | Nội vùng trước 16h: ${i.hang_noi_vung}`;
+            const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
+            const nang_suat_o = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
+
+            // ĐÚNG FORMAT NỘI DUNG CHÍNH XÁC DO TIẾN YÊU CẦU
+            const reportText = `27/06/2026\n` +
+                               `Báo cáo cuối ca Sort (07:30-16:30) KTC HCM 01\n\n` +
+                               `1/ Lượng hàng.\n` +
+                               `a. Forecast (đơn):${i.forecast.toLocaleString()}\n` +
+                               `b. Act (đơn):${act_don.toLocaleString()}\n\n` +
+                               `2/ Nhân sự.\n` +
+                               `a. Nhân viên năng suất:${tile_nsuat}% ${i.sdung_nsuat}/${i.skh_nsuat}\n` +
+                               `b. Nhân viên giờ công:${tile_gcong}% ${i.sdung_gcong}/${i.skh_gcong}\n` +
+                               `c. Freelancer:${tile_fl}% ${total_fl_sdung}/${total_fl_skh}\n` +
+                               `Tổng đáp ứng nhân sự:${tile_tong}%\n\n` +
+                               `3/ Năng suất:${nang_suat_o}đơn/h\n\n` +
+                               `4/ Hàng hóa:\n` +
+                               `Data ghi nhận :27/06/2026 13:27:18\n` +
+                               `a. Hàng nhận chờ rã (đơn):${i.hang_cho_ra}đơn\n` +
+                               `-Hàng liên vùng trước mốc bàn giao 15:00:${i.hang_lien_vung}đơn\n` +
+                               `-Hàng nội vùng trước mốc bàn giao 16:00:${i.hang_noi_vung}đơn\n` +
+                               `b. Hàng sort đã xử lý:\n` +
+                               `- Trạng thái khởi tạo chờ xuất ${i.hang_cho_xuat}đơn\n\n` +
+                               `5/ Phát sinh trong ca:\n` +
+                               `- ${i.phat_sinh}`;
 
             return {
               gc_leader, gc_nsuat, gc_gcong, gc_thuviec, gc_fl_had, gc_fl_viec,
@@ -203,9 +201,8 @@
             };
           }, [inputs]);
 
-          // Lọc danh sách cột hiển thị (Cắt đúng 7 cột Thứ 2 -> Chủ Nhật dựa theo bộ lọc tuần)
           const currentWeekHeaders = React.useMemo(() => {
-            const baseIndex = 5 + (weekOffset * 7); // Giả định dịch chuyển bước nhảy theo chu kỳ 7 cột của tuần trên sheet
+            const baseIndex = 5 + (weekOffset * 7); 
             return allLichHeaders.slice(Math.max(0, baseIndex), baseIndex + 7);
           }, [allLichHeaders, weekOffset]);
 
@@ -224,7 +221,7 @@
           if (isLoading) {
             return e('div', { className: 'flex flex-col items-center justify-center min-h-screen font-bold text-slate-500' },
               e('div', { className: 'w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-2' }),
-              'Đang thiết lập bảng lịch biểu tuần và cấu hình tự động tính...'
+              'Đang đồng bộ hóa cấu hình dữ liệu và bảng tuần biểu...'
             );
           }
 
@@ -242,7 +239,7 @@
           return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
             e('header', { className: 'bg-slate-900 text-white p-3 flex justify-between items-center shadow-md' },
               e('h1', { className: 'text-xs font-black tracking-widest text-orange-500' }, 'SORT KTC 01 OPERATIONAL WEB'),
-              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-1 rounded text-slate-400' }, 'Cấu hình: Toàn tuần & Tự động Act')
+              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-1 rounded text-slate-400' }, 'Cấu hình: Báo cáo chuẩn Form gốc')
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-600 text-center text-xs' },
               [['lich-lam-viec', 'Bảng Lịch Toàn Tuần 📅'], ['report-daily', 'Report Daily & Tự Tính 📊'], ['vi-pham', 'Vi Phạm 🔓'], ['bien-ban', 'Biên Bản 🔓']].map(tab => 
@@ -252,7 +249,6 @@
 
             e('main', { className: 'p-3 w-full max-w-7xl mx-auto flex-1' },
               
-              // TAB 1: HIỂN THỊ NGUYÊN TUẦN TỪ THỨ 2 ĐẾN CHỦ NHẬT
               activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-4 rounded border shadow-sm space-y-3' },
                 e('div', { className: 'flex justify-between items-center border-b pb-2' },
                   e('h2', { className: 'font-black text-sm text-slate-800' }, 'LỊCH TRỰC BAN TOÀN DIỆN NGUYÊN TUẦN'),
@@ -281,18 +277,16 @@
                 )
               ),
 
-              // TAB 2: REPORT DAILY CHUẨN FORM 2 ẢNH, CA KHÔNG XUỐNG DÒNG, TỰ TÍNH GIỜ CÔNG & ACT
               activeTab === 'report-daily' && e('div', { className: 'space-y-4' },
                 e('div', { className: 'bg-white rounded border overflow-x-auto shadow' },
                   e('table', { className: 'w-full border-collapse text-center text-[11px]' },
                     e('thead', null, 
                       e('tr', { className: 'bg-orange-500 text-white font-black' }, e('th', { colSpan: 14, className: 'p-2 text-sm tracking-widest' }, 'ĐIỂM DANH CA TRỰC SORT KTC 01')),
                       e('tr', { className: 'bg-orange-500 text-white font-bold border-t border-orange-400' }, 
-                        ['Ca làm việc', 'Giờ vào', 'Giờ ra', 'Vị trí', 'Giờ Công', 'Tổng nhân sự', 'Số kế hoạch', 'Số Đáp Ứng', 'Giờ Công Thực Tế', 'Thời Gian Bù - Trừ', 'Ghi Chú', 'Tỉ Lệ', 'Đáp Ứng Đạt', 'Đáp Ứng Thiếu'].map(h => e('th', { className: 'p-1.5 border border-orange-400' }, h))
+                        ['Ca làm việc', 'Giờ vào', 'Giờ ra', 'Vị trí', 'Giờ Công', 'Tổng nhân sự', 'Số kế hoạch', 'Số Đáp ỨNG', 'Giờ Công Thực Tế', 'Thời Gian Bù - Trừ', 'Ghi Chú', 'Tỉ Lệ', 'Đáp Ứng Đạt', 'Đáp Ứng Thiếu'].map(h => e('th', { className: 'p-1.5 border border-orange-400' }, h))
                       )
                     ),
                     e('tbody', { className: 'font-medium' },
-                      // Định nghĩa mảng render cấu trúc hàng ngang khít, Ca làm việc liền mạch không xuống dòng
                       [
                         { id: 'leader', vt: 'Leader', v: 'v_leader', r: 'r_leader', tns: 'tns_leader', skh: 'skh_leader', sd: 'sdung_leader', note: 'note_leader', gc: computed.gc_leader, gctt: computed.gctt_leader },
                         { id: 'nsuat', vt: 'NV Năng suất', v: 'v_nsuat', r: 'r_nsuat', tns: 'tns_nsuat', skh: 'skh_nsuat', sd: 'sdung_nsuat', note: 'note_nsuat', gc: computed.gc_nsuat, gctt: computed.gctt_nsuat },
@@ -311,7 +305,7 @@
                         e('td', { className: 'border p-0 w-14' }, e('input', { type: 'number', className: 'w-full text-center p-1 bg-transparent font-black text-emerald-700', value: inputs[row.sd], onChange: ev => handleInputChange(row.sd, ev.target.value, true) })),
                         e('td', { className: 'border font-mono font-bold' }, row.gctt.toFixed(1)),
                         e('td', { className: 'border' }),
-                        e('td', { className: 'border p-0 text-left' }, e('input', { type: 'text', className: 'w-full p-1 bg-transparent text-[10px]', placeholder: 'Để trống...', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
+                        e('td', { className: 'border p-0 text-left' }, e('input', { type: 'text', className: 'w-full p-1 bg-transparent text-[10px]', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
                         e('td', { className: 'border text-slate-400 font-bold' }, '100%'),
                         idx === 0 && e('td', { rowSpan: 6, className: 'border font-black text-center text-xs bg-emerald-50 text-emerald-700' }, computed.tile_tong + '%'),
                         idx === 0 && e('td', { rowSpan: 6, className: 'border font-black text-center text-xs bg-red-50 text-red-500' }, '0%')
@@ -326,7 +320,6 @@
                   )
                 ),
 
-                // KHỐI ĐIỀN REPORT SẢN LƯỢNG TỰ ĐỘNG TÍNH TOÁN ACT
                 e('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
                   e('div', { className: 'bg-white p-4 rounded border space-y-3 shadow-sm text-xs' },
                     e('h3', { className: 'font-black text-slate-800 uppercase tracking-wider text-[11px] border-l-4 border-orange-500 pl-2' }, 'Thông số đầu vào sản lượng'),
@@ -343,39 +336,44 @@
                     e('div', { className: 'flex justify-between items-center font-black pt-1' }, e('span', null, 'Hiệu suất Năng suất đơn/h (L12):'), e('span', { className: 'text-red-600 font-mono text-sm' }, computed.nang_suat_o))
                   ),
                   
-                  // FORM VÀNG ĐIỀN REPORT ĐỒNG BỘ THEO DỮ LIỆU ĐIỂM DANH
+                  // ĐIỀU CHỈNH CHÍNH XÁC: CÔNG NV = NĂNG SUẤT, CÔNG CTV = GIỜ CÔNG
                   e('div', { className: 'bg-amber-400 border border-amber-500 rounded overflow-hidden shadow-sm flex flex-col' },
                     e('div', { className: 'bg-amber-500 text-center font-black p-2 text-slate-900 tracking-wider text-xs uppercase' }, 'Khối dữ liệu Điền Report'),
                     e('div', { className: 'p-3 space-y-2 font-bold text-slate-900 text-xs divide-y divide-amber-300 flex-1' },
-                      [['Công Leader', computed.gctt_leader.toFixed(1)], ['Công NV', (computed.gctt_nsuat + computed.gctt_gcong).toFixed(1)], ['Công CTV', '0.0'], ['Công FL', (computed.gctt_fl_had + computed.gctt_fl_viec).toFixed(1)], ['Nhân viên thử việc', computed.gctt_thuviec.toFixed(1)], ['Tổng cộng giờ công', computed.total_gctt.toFixed(1)]].map((item, id) => 
+                      [
+                        ['Công Leader', computed.gctt_leader.toFixed(1)], 
+                        ['Công NV (Năng suất)', computed.gctt_nsuat.toFixed(1)], 
+                        ['Công CTV (Giờ công)', computed.gctt_gcong.toFixed(1)], 
+                        ['Công FL', (computed.gctt_fl_had + computed.gctt_fl_viec).toFixed(1)], 
+                        ['Nhân viên thử việc', computed.gctt_thuviec.toFixed(1)], 
+                        ['Tổng cộng giờ công', computed.total_gctt.toFixed(1)]
+                      ].map((item, id) => 
                         e('div', { key: id, className: 'flex justify-between pt-1.5' }, e('span', null, item[0]), e('span', { className: 'font-mono' }, item[1]))
                       )
                     )
                   )
                 ),
 
-                // KHỐI NHẬP HÀNG HOÁ RỖNG ĐỂ TỰ NHẬP
                 e('div', { className: 'bg-white p-4 rounded border shadow-sm space-y-3' },
-                  e('h4', { className: 'font-bold text-slate-700 text-xs uppercase border-b pb-1' }, '4/ Tình trạng hàng hóa & điều phối cuối ca (Nhập Tay Rỗng)'),
-                  e('div', { className: 'grid grid-cols-2 sm:grid-cols-4 gap-3' },
-                    e('div', null, e('label', { className: 'block font-bold text-slate-500 mb-0.5' }, 'Hàng nhận chờ rã (đơn):'), e('input', { type: 'number', className: 'w-full p-1.5 border rounded font-mono', value: inputs.hang_cho_ra, onChange: ev => handleInputChange('hang_cho_ra', ev.target.value, true) })),
+                  e('h4', { className: 'font-bold text-slate-700 text-xs uppercase border-b pb-1' }, '4/ Tình trạng hàng hóa & Phát sinh cuối ca'),
+                  e('div', { className: 'grid grid-cols-1 sm:grid-cols-5 gap-3' },
+                    e('div', null, e('label', { className: 'block font-bold text-slate-500 mb-0.5' }, 'Hàng chờ rã (đơn):'), e('input', { type: 'number', className: 'w-full p-1.5 border rounded font-mono', value: inputs.hang_cho_ra, onChange: ev => handleInputChange('hang_cho_ra', ev.target.value, true) })),
                     e('div', null, e('label', { className: 'block font-bold text-slate-400 mb-0.5' }, 'Liên vùng trước mốc 15h:'), e('input', { type: 'number', className: 'w-full p-1.5 border rounded font-mono text-slate-500', value: inputs.hang_lien_vung, onChange: ev => handleInputChange('hang_lien_vung', ev.target.value, true) })),
                     e('div', null, e('label', { className: 'block font-bold text-slate-400 mb-0.5' }, 'Nội vùng trước mốc 16h:'), e('input', { type: 'number', className: 'w-full p-1.5 border rounded font-mono text-slate-500', value: inputs.hang_noi_vung, onChange: ev => handleInputChange('hang_noi_vung', ev.target.value, true) })),
-                    e('div', null, e('label', { className: 'block font-bold text-amber-700 mb-0.5' }, 'Trạng thái khởi tạo chờ xuất:'), e('input', { type: 'number', className: 'w-full p-1.5 border border-amber-300 bg-amber-50 font-bold rounded font-mono text-amber-900', value: inputs.hang_cho_xuat, onChange: ev => handleInputChange('hang_cho_xuat', ev.target.value, true) }))
+                    e('div', null, e('label', { className: 'block font-bold text-amber-700 mb-0.5' }, 'Khởi tạo chờ xuất (đơn):'), e('input', { type: 'number', className: 'w-full p-1.5 border border-amber-300 bg-amber-50 font-bold rounded font-mono text-amber-900', value: inputs.hang_cho_xuat, onChange: ev => handleInputChange('hang_cho_xuat', ev.target.value, true) })),
+                    e('div', null, e('label', { className: 'block font-bold text-slate-500 mb-0.5' }, 'Phát sinh trong ca:'), e('input', { type: 'text', className: 'w-full p-1.5 border rounded font-bold', value: inputs.phat_sinh, onChange: ev => handleInputChange('phat_sinh', ev.target.value) }))
                   )
                 ),
 
-                // BẢNG BÁO CÁO VIẾT CHUNG ĐỂ TIỆN COPY NHANH CHÓNG GỬI GROUP CHAT
                 e('div', { className: 'bg-white rounded border shadow p-3 space-y-2' },
                   e('div', { className: 'flex justify-between items-center' },
-                    e('span', { className: 'font-black text-slate-800 text-xs uppercase bg-yellow-400 px-2 py-0.5 rounded' }, '📋 KHUNG COPY BÁO CÁO NHANH (TIỆN LỢI ĐI GỬI)'),
+                    e('span', { className: 'font-black text-slate-800 text-xs uppercase bg-yellow-400 px-2 py-0.5 rounded' }, '📋 KHUNG COPY BÁO CÁO NHANH (ĐÚNG FORM TIẾN YÊU CẦU)'),
                     e('button', { className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded text-[11px]', onClick: () => { navigator.clipboard.writeText(computed.reportText); alert('Đã sao chép nội dung báo cáo thành công!'); } }, 'Copy Toàn Bộ Text 📑')
                   ),
-                  e('textarea', { className: 'w-full h-48 font-mono p-2 border rounded bg-slate-900 text-emerald-400 text-xs leading-relaxed focus:outline-none', readOnly: true, value: computed.reportText })
+                  e('textarea', { className: 'w-full h-64 font-mono p-2 border rounded bg-slate-900 text-emerald-400 text-xs leading-relaxed focus:outline-none', readOnly: true, value: computed.reportText })
                 )
               ),
 
-              // TAB 3 & 4: PHẦN TRA CỨU VI PHẠM (GIỮ NGUYÊN KHÔNG ĐỔI)
               (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-3' },
                 e('div', { className: 'bg-white p-3 rounded border flex justify-between items-center shadow-sm text-xs' },
                   e('span', { className: 'font-black text-emerald-700 uppercase' }, '🔓 Danh sách công khai tra cứu dữ liệu lỗi vận hành'),
