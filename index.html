@@ -179,7 +179,13 @@
             const tile_fl = total_fl_skh > 0 ? Math.round((total_fl_sdung / total_fl_skh) * 100) : 0;
 
             const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
-            const nang_suat_o = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
+            
+            // TÍNH NĂNG SUẤT BẰNG FC / TỔNG GIỜ CÔNG THỰC TẾ
+            const nang_suat_o = total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0;
+
+            // ĐÁP ỨNG ĐẠT VÀ THIẾU LOGIC KHỚP THEO MẪU TỔNG
+            const dapt_dat = tile_tong >= 100 ? 100 : tile_tong;
+            const dapt_thieu = tile_tong >= 100 ? 0 : (100 - tile_tong);
 
             const reportText = `27/06/2026\n` +
                                `Báo cáo cuối ca Sort (07:30-16:30) KTC HCM 01\n\n` +
@@ -216,7 +222,7 @@
               gctt_leader, gctt_nsuat, gctt_gcong, gctt_thuviec, gctt_fl_had, gctt_fl_viec,
               tile_leader, tile_nsuat, tile_gcong, tile_thuviec, tile_fl_had, tile_fl_viec,
               total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, nang_suat_o, reportText,
-              formatGctt, allHoursText
+              formatGctt, allHoursText, dapt_dat, dapt_thieu
             };
           }, [inputs]);
 
@@ -317,53 +323,59 @@
                         { id: 'fl_had', vt: 'FL - Hoa Anh Đào', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
                         { id: 'fl_viec', vt: 'FL - Viecco', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_viec }
                       ].map((row, idx) => e('tr', { key: row.id, className: 'hover:bg-slate-50 border-t border-slate-200' },
-                        idx === 0 && e('td', { rowSpan: 8, className: 'border p-2 font-black text-center whitespace-nowrap min-w-[90px]' }, '07:00-16:00'),
+                        idx === 0 && e('td', { rowSpan: 9, className: 'border p-2 font-black text-center whitespace-nowrap min-w-[90px]' }, '07:00-16:00'),
                         e('td', { className: 'border p-0 w-14' }, e('input', { type: 'text', className: 'w-full text-center p-1 bg-transparent font-bold text-black', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
                         e('td', { className: 'border p-0 w-14' }, e('input', { type: 'text', className: 'w-full text-center p-1 bg-transparent font-bold text-black', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
                         e('td', { className: 'border text-left pl-2 font-bold text-black' }, row.vt),
                         e('td', { className: 'border font-bold text-black font-mono' }, row.gc.toFixed(1).replace('.', ',')),
                         e('td', { className: 'border p-0 w-14' }, e('input', { type: 'number', className: 'w-full text-center p-1 bg-transparent font-bold text-black', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
-                        e('td', { className: 'border p-0 w-14' }, e('input', { type: 'number', className: 'w-full text-center p-1 bg-transparent text-black', value: inputs[row.skh], onChange: ev => handleInputChange(row.skh, ev.target.value, true) })),
+                        e('td', { className: 'border p-0 w-14' }, e('input', { type: 'number', className: 'w-full text-center p-1 bg-transparent text-black', value: inputs[row.skh], onChange: ev => handleInputChange('skh_' + row.id, ev.target.value, true) })),
                         e('td', { className: 'border p-0 w-14' }, e('input', { type: 'number', className: 'w-full text-center p-1 bg-transparent font-black text-black', value: inputs[row.sd], onChange: ev => handleInputChange(row.sd, ev.target.value, true) })),
                         e('td', { className: 'border font-mono font-bold text-black' }, computed.formatGctt(row.gctt)),
-                        e('td', { className: 'border' }),
-                        e('td', { className: 'border p-0 text-left pl-1' }, e('input', { type: 'text', className: 'w-full p-1 bg-transparent text-[11px] text-black focus:outline-none', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
-                        e('td', { className: 'border font-bold text-black' }, row.tl + '%'),
-                        idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-xs text-black' }, '100%'),
-                        idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-xs text-black' }, '0%')
+                        
+                        // CÁC CỘT CÓ THỂ CO GIÃN TỰ ĐỘNG THEO TEXT ĐẦU VÀO
+                        e('td', { className: 'border px-1 min-w-[60px]' }, '0'),
+                        e('td', { className: 'border p-0 w-full min-w-[150px]' }, e('input', { type: 'text', className: 'w-full p-1 bg-transparent text-[11px] text-black focus:outline-none', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
+                        e('td', { className: 'border font-bold text-black px-1' }, row.tl + '%'),
+                        
+                        idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-xs text-black min-w-[70px]' }, computed.dapt_dat + '%'),
+                        idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-xs text-black min-w-[70px]' }, computed.dapt_thieu + '%')
                       )),
                       
-                      // DÒNG TỔNG CỘNG CHỮ VÀ SỐ MÀU ĐỎ TOÀN BỘ THEO ẢNH
-                      e('tr', { className: 'font-black border-t-2 border-slate-300 text-red-600' },
+                      // DÒNG TỔNG CỘNG CHỮ VÀ SỐ MÀU ĐỎ TOÀN BỘ
+                      e('tr', { className: 'font-black border-t-2 border-slate-300 text-red-600 bg-white' },
                         e('td', { colSpan: 4, className: 'border p-1.5 text-center' }, 'Tổng cộng'), e('td', { className: 'border' }),
                         e('td', { className: 'border' }, computed.total_tns), e('td', { className: 'border' }, computed.total_skh), e('td', { className: 'border' }, computed.total_sdung),
-                        e('td', { className: 'border font-mono' }, computed.formatGctt(computed.total_gctt)), e('td', { className: 'border' }, '0'), e('td', { className: 'border' }), e('td', { className: 'border' }, '0%'),
-                        e('td', { className: 'border' }, '100%'), e('td', { className: 'border' }, '0%')
+                        e('td', { className: 'border font-mono' }, computed.formatGctt(computed.total_gctt)), e('td', { className: 'border' }, '0'), e('td', { className: 'border' }), e('td', { className: 'border' }, computed.tile_tong + '%'),
+                        e('td', { className: 'border text-red-600 font-bold' }, computed.dapt_dat + '%'), e('td', { className: 'border text-red-600 font-bold' }, computed.dapt_thieu + '%')
                       ),
 
                       // DÒNG BỔ SUNG 1: TỔNG GIỜ CÔNG SORT
-                      e('tr', { className: 'font-black text-red-600 border-t border-slate-200' },
+                      e('tr', { className: 'font-black text-red-600 border-t border-slate-200 bg-white' },
                         e('td', { colSpan: 3, className: 'border p-1.5 text-center' }, 'Tổng giờ công Sort'),
                         e('td', { className: 'border' }), e('td', { className: 'border' }), e('td', { className: 'border' }), e('td', { className: 'border' }), e('td', { className: 'border' }),
                         e('td', { colSpan: 3, className: 'border font-mono text-center text-sm' }, computed.formatGctt(computed.total_gctt)),
-                        e('td', { className: 'border font-bold text-center text-xs text-black', rowSpan: 2 }, '100%'),
-                        e('td', { className: 'border font-bold text-center text-xs text-black', rowSpan: 2 }, '0%')
+                        e('td', { className: 'border font-bold text-center text-xs text-red-600', rowSpan: 3 }, computed.dapt_dat + '%'),
+                        e('td', { className: 'border font-bold text-center text-xs text-red-600', rowSpan: 3 }, computed.dapt_thieu + '%')
                       ),
 
-                      // DÒNG BỔ SUNG 2: DAY | FC | NĂNG SUẤT
-                      e('tr', { className: 'font-bold border-t border-slate-200 text-black text-[10px]' },
-                        e('td', { colSpan: 5, className: 'border bg-slate-50' }),
-                        e('td', { className: 'border text-center bg-slate-100 font-black' }, 'Day'),
-                        e('td', { colSpan: 3, className: 'border text-center bg-slate-100 font-black' }, 'FC'),
-                        e('td', { className: 'border text-center bg-slate-100 font-black font-sans' }, 'Năng suất'),
-                        e('td', { className: 'border bg-slate-50' }), e('td', { className: 'border bg-slate-50' })
+                      // DÒNG BỔ SUNG 2 Tiêu đề: DAY | FC | NĂNG SUẤT (GIỚI HẠN NGANG CHUẨN VỚI 3 CỘT TRÊN)
+                      e('tr', { className: 'font-bold border-t border-slate-200 text-black text-[10px] bg-white' },
+                        e('td', { colSpan: 5, className: 'border bg-white' }),
+                        e('td', { className: 'border text-center bg-slate-50 font-black' }, 'Day'),
+                        e('td', { colSpan: 1, className: 'border text-center bg-slate-50 font-black' }, 'FC'),
+                        e('td', { className: 'border text-center bg-slate-50 font-black' }, 'Năng suất'),
+                        e('td', { colSpan: 3, className: 'border bg-white' })
                       ),
-                      e('tr', { className: 'font-bold border-t border-slate-200 text-black font-mono text-[11px]' },
-                        e('td', { colSpan: 6, className: 'border bg-slate-50' }),
+
+                      // DÒNG BỔ SUNG 3 Giá trị: GIỚI HẠN CHUẨN NGANG VỚI THỜI GIAN BÙ - TRỪ, GHI CHÚ, TỈ LỆ
+                      e('tr', { className: 'font-bold border-t border-slate-200 text-black font-mono text-[11px] bg-white' },
+                        e('td', { colSpan: 5, className: 'border bg-white' }),
                         e('td', { className: 'border text-center text-red-600 font-bold' }, '27/06/2026'),
-                        e('td', { colSpan: 3, className: 'border text-center text-black font-bold' }, inputs.forecast.toLocaleString()),
+                        e('td', { colSpan: 1, className: 'border text-center text-black font-bold' }, inputs.forecast.toLocaleString()),
+                        // NĂNG SUẤT ĐÃ ĐƯỢC TÍNH BẰNG FC / TỔNG GIỜ CÔNG
                         e('td', { className: 'border text-center text-red-600 font-black text-xs' }, computed.nang_suat_o),
-                        e('td', { className: 'border bg-slate-50', colSpan: 3 })
+                        e('td', { colSpan: 3, className: 'border bg-white' })
                       )
                     )
                   )
@@ -382,7 +394,7 @@
                       e('span', { className: 'text-slate-600' }, '⚡ Tự tính toán Act (đơn) = CBS1 + CBS2 + Tròn lăn:'),
                       e('span', { className: 'text-emerald-700 font-mono text-sm font-black' }, computed.act_don.toLocaleString())
                     ),
-                    e('div', { className: 'flex justify-between items-center font-black pt-1' }, e('span', null, 'Hiệu suất Năng suất đơn/h (L12):'), e('span', { className: 'text-red-600 font-mono text-sm' }, computed.nang_suat_o))
+                    e('div', { className: 'flex justify-between items-center font-black pt-1' }, e('span', null, 'Hiệu suất Năng suất đơn/h (FC/Tổng giờ công):'), e('span', { className: 'text-red-600 font-mono text-sm' }, computed.nang_suat_o))
                   ),
                   
                   e('div', { className: 'bg-amber-400 border border-amber-500 rounded overflow-hidden shadow-sm flex flex-col' },
@@ -430,7 +442,7 @@
 
                 e('div', { className: 'bg-white rounded border shadow p-3 space-y-2' },
                   e('div', { className: 'flex justify-between items-center' },
-                    e('span', { className: 'font-black text-slate-800 text-xs uppercase bg-yellow-400 px-2 py-0.5 rounded' }, '📋 KHUNG COPY BÁO CÁO NHANH (ĐÚNG FORM TIẾN YÊU CẦU)'),
+                    e('span', { className: 'font-black text-slate-800 text-xs uppercase bg-yellow-400 px-2 py-0.5 rounded' }, '📋 KHUNG COPY BÁO CÁO NHANH'),
                     e('button', { className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded text-[11px]', onClick: () => copyToClipboard(computed.reportText, 'Đã sao chép nội dung báo cáo thành công!') }, 'Copy Toàn Bộ Text 📑')
                   ),
                   e('textarea', { className: 'w-full h-64 font-mono p-2 border rounded bg-slate-900 text-emerald-400 text-xs leading-relaxed focus:outline-none', readOnly: true, value: computed.reportText })
