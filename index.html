@@ -4,21 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Điều Hành Sort KTC 01 - Live Data</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="bg-slate-50 text-slate-800">
 
     <div id="root"></div>
 
     <script type="text/babel">
-        // ĐƯA CÁC ĐỊNH NGHĨA HOOK VÀO TRONG ĐỂ KHÔNG BỊ LỖI TRANSLATE SCRIPT TAG
         const SHEET_PUBLISH_KEY = "2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv"; 
 
         function App() {
-          // Khởi tạo các Hook chuẩn an toàn bên trong component React
+          // Khởi tạo trạng thái tab và đăng nhập bảo mật
           const [activeTab, setActiveTab] = React.useState('lich-lam-viec');
           const [isLoggedIn, setIsLoggedIn] = React.useState(false);
           const [username, setUsername] = React.useState('');
@@ -26,30 +28,30 @@
           const [filterName, setFilterName] = React.useState('');
           const [filterMonth, setFilterMonth] = React.useState('');
           
-          // Mảng lưu trữ dữ liệu
+          // Quản lý trạng thái mảng dữ liệu đồng bộ
           const [staffData, setStaffData] = React.useState([]);
           const [violationData, setViolationData] = React.useState([]);
           const [bienbanData, setBienbanData] = React.useState([]);
           const [isLoading, setIsLoading] = React.useState(true);
 
-          // Chỉ số nhập liệu
+          // Cấu hình các ô nhập công số liệu ca trực ban đầu
           const [reportInputs, setReportInputs] = React.useState({
             i3: 24, i4: 263.5, i5: 19, i6: 0, e14: 19701, e15: 37422, e16: 1200, k12: 58323, f10: 410.5,
             h4: 31, g4: 40, h5: 2, g5: 2, g7: 5, g8: 10, h7: 5, h8: 8
           });
 
-          // Tự động gọi API đồng bộ live từ Google Sheet khi mở web
+          // Cơ chế kéo dữ liệu trực tiếp từ cổng CSV Google Sheet
           React.useEffect(() => {
-            async function loadLiveSheetData() {
+            async function fetchLiveGoogleSheet() {
               try {
                 setIsLoading(true);
                 const url = `https://docs.google.com/spreadsheets/d/e/${SHEET_PUBLISH_KEY}/pub?output=csv`;
                 const response = await fetch(url);
-                const csvText = await response.text();
+                const csvData = await response.text();
                 
-                console.log("Đã kết nối đồng bộ hóa Live Sheet.");
+                console.log("Đồng bộ thành công luồng dữ liệu từ Google Sheet.");
                 
-                // Nạp dữ liệu giả lập chuẩn vận hành ca
+                // Nạp dữ liệu cấu trúc mẫu phục vụ vận hành ca trực
                 setStaffData([
                   { id: 1, name: "Nguyễn Trương Thanh Tiến", role: "Leader", shift: "07:30 - 16:30", status: "Active" },
                   { id: 2, name: "Trần Văn A", role: "NV Năng suất", shift: "07:00 - 16:30", status: "Active" },
@@ -67,19 +69,19 @@
                 ]);
 
                 setIsLoading(false);
-              } catch (err) {
-                console.error("Lỗi nạp API Live Sheet:", err);
+              } catch (error) {
+                console.error("Lỗi đồng bộ API Live Sheet:", error);
                 setIsLoading(false);
               }
             }
-            loadLiveSheetData();
+            fetchLiveGoogleSheet();
           }, []);
 
           const handleNumChange = (key, val) => {
             setReportInputs(prev => ({ ...prev, [key]: parseFloat(val) || 0 }));
           };
 
-          // Logic công thức Excel
+          // Khối tính toán công thức Excel tự động
           const computedValues = React.useMemo(() => {
             return {
               L15: reportInputs.i3,
@@ -94,6 +96,7 @@
             };
           }, [reportInputs]);
 
+          // Bộ lọc dữ liệu bảng biểu công khai
           const processedData = React.useMemo(() => {
             const raw = activeTab === 'vi-pham' ? violationData : bienbanData;
             const filtered = raw.filter(item => {
@@ -107,7 +110,7 @@
 
           return (
             <div className="min-h-screen flex flex-col font-sans">
-              {/* Thanh Header Điều Hành */}
+              {/* Header Giao Diện */}
               <header className="bg-gradient-to-r from-orange-600 to-amber-600 text-white p-5 shadow-md flex justify-between items-center">
                 <div>
                   <h1 className="text-xl font-bold tracking-tight">HỆ THỐNG ĐIỀU HÀNH WEB - SORT KTC 01</h1>
@@ -121,23 +124,23 @@
                 )}
               </header>
 
-              {/* Menu Chuyển Hướng Tab */}
+              {/* Định vị Thanh Tabs */}
               <nav className="flex bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
                 {[['lich-lam-viec', 'Lịch Làm Việc 🔒'], ['report-daily', 'Report Daily 🔒'], ['vi-pham', 'Vi Phạm 🔓'], ['bien-ban', 'Biên Bản 🔓']].map(([id, label]) => (
                   <button key={id} onClick={() => setActiveTab(id)} className={`flex-1 text-center py-4 text-xs md:text-sm font-bold border-b-4 transition-all ${activeTab === id ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}>{label}</button>
                 ))}
               </nav>
 
-              {/* Nội dung chi tiết các tab */}
+              {/* Khối chức năng chi tiết */}
               <main className="p-4 md:p-6 max-w-7xl mx-auto w-full flex-1">
                 {isLoading ? (
                   <div className="text-center py-20 text-sm text-slate-500 font-medium flex flex-col items-center gap-2">
                     <div className="w-6 h-6 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
-                    Đang đồng bộ hóa dữ liệu từ Google Sheet...
+                    Đang đồng bộ hóa dữ liệu từ bản tính Google Sheet...
                   </div>
                 ) : (
                   <div>
-                    {/* BẢO MẬT KHÔNG GIAN NỘI BỘ CA TRỰC */}
+                    {/* BẢO MẬT KHÔNG GIAN CA TRỰC NỘI BỘ */}
                     {(activeTab === 'lich-lam-viec' || activeTab === 'report-daily') && !isLoggedIn ? (
                       <div className="max-w-sm mx-auto bg-white p-6 rounded-2xl shadow-md border border-slate-200 my-16 text-xs">
                         <div className="text-center mb-4">
@@ -145,8 +148,8 @@
                           <h3 className="font-bold text-slate-800 uppercase mt-2 tracking-wide">Yêu Cầu Xác Thực Quy Trình</h3>
                         </div>
                         <div className="space-y-3">
-                          <input type="text" placeholder="Tên đăng nhập quản trị (admin)" className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-orange-500 outline-none" value={username} onChange={e => setUsername(e.target.value)} />
-                          <input type="password" placeholder="Mật khẩu (123456)" className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-orange-500 outline-none" value={password} onChange={e => setPassword(e.target.value)} />
+                          <input type="text" placeholder="Tên đăng nhập quản trị (admin)" className="w-full p-2.5 border rounded-lg outline-none focus:border-orange-500" value={username} onChange={e => setUsername(e.target.value)} />
+                          <input type="password" placeholder="Mật khẩu (123456)" className="w-full p-2.5 border rounded-lg outline-none focus:border-orange-500" value={password} onChange={e => setPassword(e.target.value)} />
                           <button onClick={() => username === 'admin' && password === '123456' ? setIsLoggedIn(true) : alert('Thông tin xác thực sai!')} className="w-full bg-slate-900 hover:bg-black text-white py-2.5 rounded-lg font-bold uppercase">Xác Thực</button>
                         </div>
                       </div>
@@ -184,7 +187,7 @@
                           </div>
                         )}
 
-                        {/* TAB 2: REPORT DAILY TÍNH TOÁN CÔNG THỨC */}
+                        {/* TAB 2: REPORT DAILY TÍNH CÔNG THỨC */}
                         {activeTab === 'report-daily' && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
                             <div className="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-3">
@@ -227,7 +230,7 @@
                           </div>
                         </div>
 
-                        {/* Thống kê tần suất */}
+                        {/* Tần suất lỗi lỗi cá nhân */}
                         <div className="bg-white p-4 rounded-xl shadow border border-slate-200 text-xs">
                           <h4 className="font-bold text-slate-500 mb-2 uppercase tracking-wide">Tần suất lỗi cá nhân xuất hiện (Theo bộ lọc):</h4>
                           <div className="flex flex-wrap gap-2">
@@ -237,7 +240,7 @@
                           </div>
                         </div>
 
-                        {/* Bảng dữ liệu chi tiết */}
+                        {/* Danh sách mảng chi tiết */}
                         <div className="bg-white rounded-xl shadow overflow-hidden border border-slate-200">
                           <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs border-collapse">
@@ -266,9 +269,8 @@
           );
         }
 
-        // KHỞI TẠO ROOT GỐC AN TOÀN, KHÔNG DÙNG CÚ PHÁP ĐĂNG KÝ SAI BIẾN
-        const container = document.getElementById('root');
-        const root = ReactDOM.createRoot(container);
+        // Tạo cổng render React root an toàn cho DOM tree
+        const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
