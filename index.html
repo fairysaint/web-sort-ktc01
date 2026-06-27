@@ -8,43 +8,30 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="bg-slate-50 text-slate-800 text-xs">
 
     <div id="root"></div>
 
     <script>
-        // Cấu hình Base ID gốc từ link của bạn
-        const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv/pub?output=csv";
-        
-        // TÁCH LINK THEO TỪNG SHEET CHÍNH XÁC (Thay đổi số gid nếu cấu hình sheet của bạn có ID khác)
-        const URL_LICH_LAM_VIEC = BASE_URL + "&gid=0"; 
-        const URL_VI_PHAM        = BASE_URL + "&gid=1355152068"; // ID ví dụ của trang Vi Phạm, nếu lỗi hãy giữ nguyên BASE_URL nếu nó nằm ở sheet đầu tiên
-        const URL_BIEN_BAN       = BASE_URL + "&gid=1864197994"; // ID ví dụ của trang Biên Bản
-
+        // Đường dẫn Export CSV tổng từ link Google Sheet của bạn
+        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv/pub?output=csv";
         const e = React.createElement;
 
-        // Bộ phân tách dữ liệu CSV
+        // Bộ phân tách dữ liệu CSV xử lý an toàn dấu phẩy nội bọc ngoặc kép
         function parseCSV(text) {
           if (!text) return [];
           let lines = text.split(/\r\n|\n/);
           return lines.map(line => {
-            let result = [];
-            let current = '';
-            let inQuotes = false;
+            let result = []; let current = ''; let inQuotes = false;
             for (let i = 0; i < line.length; i++) {
               let char = line[i];
-              if (char === '"') {
-                inQuotes = !inQuotes;
-              } else if (char === ',' && !inQuotes) {
-                result.push(current.trim());
-                current = '';
-              } else {
-                current += char;
-              }
+              if (char === '"') { inQuotes = !inQuotes; }
+              else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+              else { current += char; }
             }
             result.push(current.trim());
             return result;
-          }).filter(row => row.length > 0 && row[0] !== '');
+          }).filter(row => row.length > 0);
         }
 
         function App() {
@@ -52,215 +39,317 @@
           const [isLoggedIn, setIsLoggedIn] = React.useState(false);
           const [username, setUsername] = React.useState('');
           const [password, setPassword] = React.useState('');
-          const [filterName, setFilterName] = React.useState('');
-          const [filterMonth, setFilterMonth] = React.useState('');
           
+          // Các trạng thái bộ lọc chung
+          const [filterName, setFilterName] = React.useState('');
+          const [filterDate, setFilterDate] = React.useState('');
+          const [filterMonth, setFilterMonth] = React.useState('');
+
+          // Lưu trữ dữ liệu bóc tách sống
           const [staffData, setStaffData] = React.useState([]);
           const [violationData, setViolationData] = React.useState([]);
           const [bienbanData, setBienbanData] = React.useState([]);
+          const [timeRangeHeader, setTimeRangeHeader] = React.useState('Dữ liệu tuần');
           const [isLoading, setIsLoading] = React.useState(true);
 
+          // State quản lý toàn bộ các ô nhập tay hoặc tính toán cho Report Daily
           const [reportInputs, setReportInputs] = React.useState({
-            i3: 24, i4: 263.5, i5: 19, i6: 0, e14: 19701, e15: 37422, e16: 1200, k12: 58323, f10: 410.5,
-            h4: 31, g4: 40, h5: 2, g5: 2, g7: 5, g8: 10, h7: 5, h8: 8
+            i3: 24, i4: 263.5, i5: 19, i6: 0, i7: 5, i8: 8,
+            e14: 19701, e15: 37422, e16: 1200, k12: 58323, f10: 410.5,
+            h3: 10, h4: 31, h5: 2, h6: 0, h7: 5, h8: 8, h9: 4,
+            g4: 40, g5: 2, g7: 5, g8: 10,
+            l4: 15, l5: 20, l8: 35, m9: 45, q14: 100, q18: 95
           });
 
           React.useEffect(() => {
-            async function loadAllSheets() {
+            async function fetchAndParseAllData() {
               try {
                 setIsLoading(true);
+                // Vì link pub?output=csv mặc định trả về trang tính đầu tiên hoặc trang đang active,
+                // chúng ta tải dữ liệu tổng quan và tiến hành bóc tách phân luồng thông minh dựa trên cấu trúc cột đặc trưng.
+                const response = await fetch(SHEET_CSV_URL);
+                const rawText = await response.text();
+                const allRows = parseCSV(rawText);
 
-                // Gọi đồng thời hoặc tuần tự các URL để tránh nhầm dòng dữ liệu chéo nhau
-                // TAB 1: Tải Lịch Làm Việc (Giả định nằm ở Sheet đầu tiên hoặc GID chỉ định)
-                const resStaff = await fetch(URL_LICH_LAM_VIEC).catch(() => fetch(BASE_URL));
-                const textStaff = await resStaff.text();
-                const rowsStaff = parseCSV(textStaff);
-                
-                let tempStaff = [];
-                rowsStaff.forEach((row, idx) => {
-                  if (idx === 0) return;
-                  // Map chính xác cột dữ liệu lịch làm việc (Họ tên: cột D[3] hoặc C[2] tùy cấu hình thực tế)
-                  if (row[3] || row[2] || row[1]) {
-                    tempStaff.push({
-                      id: idx,
-                      name: row[3] || row[2] || row[1],
-                      role: row[4] || row[3] || "Nhân viên",
-                      shift: row[5] || "Theo Ca",
-                      status: row[6] || "Active"
-                    });
+                let parsedStaff = [];
+                let parsedViolation = [];
+                let parsedBienBan = [];
+
+                // 1. XỬ LÝ TRÍCH XUẤT SHEET LỊCH LÀM VIỆC (Dòng 3 là thời gian, quét cột D từ dòng 5)
+                if (allRows[2] && allRows[2][3]) {
+                  setTimeRangeHeader(allRows[2][3] || "Thời gian kéo dài liên tục");
+                }
+
+                let scanningStaff = false;
+                for (let i = 0; i < allRows.length; i++) {
+                  const row = allRows[i];
+                  const colDValue = row[3] ? row[3].trim() : "";
+
+                  if (i === 4) { scanningStaff = true; } // Bắt đầu quét từ dòng 5 (chỉ số mảng 4)
+                  if (scanningStaff) {
+                    if (colDValue.indexOf("Nhóm năng suất") !== -1 || colDValue === "Nhóm năng suất") {
+                      break; // Gặp điểm chặn -> Dừng mảng động ngay lập tức
+                    }
+                    if (colDValue) {
+                      parsedStaff.push({
+                        id: i,
+                        name: colDValue,
+                        shiftInfo: row[4] || "Theo lịch ca trực vận hành"
+                      });
+                    }
                   }
-                });
+                }
 
-                // TAB 3: Tải dữ liệu Vi Phạm (Cố gắng fetch link chuyên biệt, nếu không có thì lấy luồng phụ)
-                const resViolation = await fetch(URL_VI_PHAM).catch(() => fetch(BASE_URL));
-                const textViolation = await resViolation.text();
-                const rowsViolation = parseCSV(textViolation);
-                
-                let tempViolation = [];
-                rowsViolation.forEach((row, idx) => {
-                  if (idx === 0) return;
-                  // Chỉ lấy nếu dòng có chứa thông tin vi phạm đặc trưng
-                  if (row[2] && row[1]) {
-                    tempViolation.push({
+                // 2. XỬ LÝ TRÍCH XUẤT SHEET VI PHẠM & BIÊN BẢN (Quét song song dựa theo định danh tiêu đề cột)
+                allRows.forEach((row, idx) => {
+                  // Nhận dạng dòng chứa dữ liệu Vi Phạm (Cột 0: Thời gian, Cột 1: Mã gọi/Mã lỗi, Cột 2: Tên thật)
+                  if (idx > 0 && row[0] && row[2] && row[3] && row[1] && row[1].length <= 15) {
+                    parsedViolation.push({
                       id: idx,
                       time: row[0],
                       code: row[1],
                       name: row[2],
-                      error: row[3] || "Lỗi vận hành",
-                      userId: row[4] || "KTC_ID"
+                      error: row[3],
+                      userId: row[4] || "N/A",
+                      reporter: row[5] || "N/A"
                     });
                   }
-                });
-
-                // TAB 4: Tải dữ liệu Biên Bản
-                const resBienBan = await fetch(URL_BIEN_BAN).catch(() => fetch(BASE_URL));
-                const textBienBan = await resBienBan.text();
-                const rowsBienBan = parseCSV(textBienBan);
-                
-                let tempBienBan = [];
-                rowsBienBan.forEach((row, idx) => {
-                  if (idx === 0) return;
-                  if (row[9] || row[7]) {
-                    tempBienBan.push({
+                  // Nhận dạng dòng chứa dữ liệu Biên Bản (Tìm kiếm các cột đặc trưng)
+                  if (idx > 0 && row[7] && row[9] && row[10]) {
+                    parsedBienBan.push({
                       id: idx,
-                      date: row[7] || row[0],
+                      date: row[7],
                       username: row[8] || "N/A",
-                      name: row[9] || row[2],
-                      content: row[10] || row[3],
-                      userId: row[11] || "KTC_ID"
+                      name: row[9],
+                      content: row[10],
+                      userId: row[11] || "N/A",
+                      creator: row[12] || "N/A",
+                      image: row[13] || ""
                     });
                   }
                 });
 
-                setStaffData(tempStaff);
-                setViolationData(tempViolation);
-                setBienbanData(tempBienBan);
+                setStaffData(parsedStaff);
+                setViolationData(parsedViolation);
+                setBienbanData(parsedBienBan);
                 setIsLoading(false);
-
-              } catch (error) {
-                console.error("Lỗi phân tách luồng dữ liệu riêng biệt:", error);
+              } catch (err) {
+                console.error("Lỗi liên kết Google Sheet API:", err);
                 setIsLoading(false);
               }
             }
-            loadAllSheets();
+            fetchAndParseAllData();
           }, []);
 
-          const handleNumChange = (key, val) => {
+          const handleInputChange = (key, value) => {
             setReportInputs(prev => {
-              const next = Object.assign({}, prev);
-              next[key] = parseFloat(val) || 0;
+              let next = Object.assign({}, prev);
+              next[key] = parseFloat(value) || 0;
               return next;
             });
           };
 
-          const computedValues = React.useMemo(() => {
+          // HỆ THỨC TÍNH TOÁN CHO SHEET REPORT DAILY (Theo chuẩn yêu cầu của Tiến)
+          const computedReport = React.useMemo(() => {
+            const inputs = reportInputs;
             return {
-              L15: reportInputs.i3, L16: reportInputs.i4, L17: reportInputs.i5,
-              L18: (reportInputs.g7 || 0) + (reportInputs.g8 || 0), L19: reportInputs.i6,
-              Q6: reportInputs.e14 + reportInputs.e15 + reportInputs.e16,
-              R8: reportInputs.h4 + "/" + reportInputs.g4, R9: reportInputs.h5 + "/" + reportInputs.g5,
-              L12: reportInputs.f10 > 0 ? (reportInputs.k12 / reportInputs.f10).toFixed(2) : 0
+              l15: inputs.i3,
+              l16: inputs.i4,
+              l17: inputs.i5,
+              l18: inputs.i7 + inputs.i8,
+              l19: inputs.i6,
+              q6: inputs.e14 + inputs.e15 + inputs.e16,
+              r8: inputs.h4 + "/" + inputs.g4,
+              r9: inputs.h5 + "/" + inputs.g5,
+              r10: (inputs.g7 + inputs.g8) + "/" + (inputs.h7 + inputs.h8),
+              q8: inputs.l4,
+              q9: inputs.l5,
+              q10: inputs.l8,
+              q11: inputs.m9,
+              l12: inputs.f10 > 0 ? (inputs.k12 / inputs.f10).toFixed(2) : 0
             };
           }, [reportInputs]);
 
-          const processedData = React.useMemo(() => {
-            const raw = activeTab === 'vi-pham' ? violationData : bienbanData;
-            const filtered = raw.filter(item => {
-              const d = item.time || item.date;
-              const nameMatch = item.name ? item.name.toLowerCase().indexOf(filterName.toLowerCase()) !== -1 : false;
-              const monthMatch = filterMonth === '' || (d && d.indexOf("-" + filterMonth + "-") !== -1);
-              return nameMatch && monthMatch;
+          // BỘ LỌC DỮ LIỆU & THỐNG KÊ NÂNG CAO CHO TAB VI PHẠM / BIÊN BẢN
+          const analyticsData = React.useMemo(() => {
+            const isVipham = activeTab === 'vi-pham';
+            const rawSource = isVipham ? violationData : bienbanData;
+
+            // Tiến hành lọc dữ liệu
+            const filtered = rawSource.filter(item => {
+              const dateStr = isVipham ? item.time : item.date;
+              if (!dateStr || !item.name) return false;
+
+              const matchName = item.name.toLowerCase().indexOf(filterName.toLowerCase()) !== -1;
+              const matchDate = filterDate === '' || dateStr.indexOf(filterDate) !== -1;
+              
+              // Lọc theo tháng dạng "-MM-" hoặc tự động khớp chuỗi tháng
+              let matchMonth = true;
+              if (filterMonth !== '') {
+                matchMonth = dateStr.indexOf("-" + filterMonth + "-") !== -1 || dateStr.startsWith(filterMonth + "/") || dateStr.indexOf("/" + filterMonth + "/") !== -1;
+              }
+              return matchName && matchDate && matchMonth;
             });
-            const individualCounts = {};
-            filtered.forEach(item => { if(item.name) individualCounts[item.name] = (individualCounts[item.name] || 0) + 1; });
-            return { filtered: filtered, individualCounts: individualCounts };
-          }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
+
+            // Tính toán thống kê tần suất cá nhân & đếm tổng lỗi vi phạm
+            let staffCounts = {};
+            let errorCounts = {};
+            let monthDistribution = { '05': 0, '06': 0, '07': 0 };
+
+            filtered.forEach(item => {
+              staffCounts[item.name] = (staffCounts[item.name] || 0) + 1;
+              const errText = isVipham ? item.error : item.content;
+              if (errText) { errorCounts[errText] = (errorCounts[errText] || 0) + 1; }
+              
+              const dStr = isVipham ? item.time : item.date;
+              ['05', '06', '07'].forEach(m => {
+                if (dStr && (dStr.indexOf("-" + m + "-") !== -1 || dStr.indexOf("/" + m + "/") !== -1)) {
+                  monthDistribution[m]++;
+                }
+              });
+            });
+
+            return { filtered, staffCounts, errorCounts, monthDistribution };
+          }, [activeTab, violationData, bienbanData, filterName, filterDate, filterMonth]);
 
           if (isLoading) {
-            return e('div', { className: 'text-center py-20 text-sm font-medium text-slate-500' },
-              e('div', { className: 'w-6 h-6 border-2 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-2' }),
-              'Đang bóc tách luồng dữ liệu riêng biệt từ Google Sheet...'
+            return e('div', { className: 'flex flex-col items-center justify-center min-h-screen font-semibold bg-slate-100 text-slate-500' },
+              e('div', { className: 'w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-3' }),
+              'Đang nạp và bóc tách luồng dữ liệu độc lập từ Google Sheet trực tuyến...'
             );
           }
 
-          const loginView = e('div', { className: 'max-w-sm mx-auto bg-white p-6 rounded-2xl shadow border border-slate-200 my-16 text-xs' },
-            e('div', { className: 'text-center mb-4' }, e('span', { className: 'text-2xl' }, '🔒'), e('h3', { className: 'font-bold text-slate-800 uppercase mt-2' }, 'Yêu Cầu Xác Thực Quy Trình')),
+          // Giao diện đăng nhập bảo mật cho 2 sheet bắt buộc tài khoản
+          const loginScreen = e('div', { className: 'max-w-sm mx-auto bg-white p-6 rounded-2xl shadow-sm border border-slate-200 my-16' },
+            e('div', { className: 'text-center mb-5' }, e('span', { className: 'text-3xl' }, '🔐'), e('h2', { className: 'font-bold text-slate-800 text-sm uppercase mt-2 tracking-wider' }, 'Yêu Cầu Tài Khoản Ca Trực')),
             e('div', { className: 'space-y-3' },
-              e('input', { type: 'text', placeholder: 'Tên đăng nhập (admin)', className: 'w-full p-2.5 border rounded-lg outline-none', value: username, onChange: ev => setUsername(ev.target.value) }),
-              e('input', { type: 'password', placeholder: 'Mật khẩu (123456)', className: 'w-full p-2.5 border rounded-lg outline-none', value: password, onChange: ev => setPassword(ev.target.value) }),
-              e('button', { className: 'w-full bg-slate-900 text-white py-2.5 rounded-lg font-bold uppercase', onClick: () => username === 'admin' && password === '123456' ? setIsLoggedIn(true) : alert('Sai thông tin!') }, 'Xác Thực')
+              e('input', { type: 'text', placeholder: 'Tên đăng nhập (admin)', className: 'w-full p-2.5 border rounded-xl outline-none focus:border-orange-500 bg-slate-50', value: username, onChange: ev => setUsername(ev.target.value) }),
+              e('input', { type: 'password', placeholder: 'Mật khẩu (123456)', className: 'w-full p-2.5 border rounded-xl outline-none focus:border-orange-500 bg-slate-50', value: password, onChange: ev => setPassword(ev.target.value) }),
+              e('button', { className: 'w-full bg-slate-900 hover:bg-black text-white py-2.5 rounded-xl font-bold transition uppercase text-xs tracking-wide', onClick: () => username === 'admin' && password === '123456' ? setIsLoggedIn(true) : alert('Tài khoản hoặc mật khẩu không chính xác!') }, 'Đăng Nhập Hệ Thống')
             )
           );
 
-          return e('div', { className: 'min-h-screen flex flex-col font-sans' },
-            e('header', { className: 'bg-gradient-to-r from-orange-600 to-amber-600 text-white p-5 shadow flex justify-between items-center' },
-              e('div', null, e('h1', { className: 'text-xl font-bold' }, 'HỆ THỐNG ĐIỀU HÀNH WEB - SORT KTC 01'), e('p', { className: 'text-xs opacity-90' }, '● Đang đồng bộ hóa độc lập đa biểu mẫu (Multi-Sheet Active)')),
-              isLoggedIn && e('button', { className: 'bg-orange-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold', onClick: () => setIsLoggedIn(false) }, 'Đăng xuất 🔓')
+          return e('div', { className: 'min-h-screen flex flex-col' },
+            // Header
+            e('header', { className: 'bg-gradient-to-r from-orange-600 to-amber-600 text-white p-4 flex justify-between items-center shadow-sm' },
+              e('div', null,
+                e('h1', { className: 'text-base font-black tracking-tight' }, 'HỆ THỐNG ĐIỀU HÀNH VẬN HÀNH - SORT KTC 01'),
+                e('p', { className: 'text-[10px] opacity-90' }, '● Live Google Sheet Engine Active')
+              ),
+              isLoggedIn && e('button', { className: 'bg-orange-800/80 hover:bg-orange-900 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition', onClick: () => setIsLoggedIn(false) }, 'Đăng xuất hệ thống 🔓')
             ),
-            e('nav', { className: 'flex bg-white border-b sticky top-0 z-40' },
+
+            // Tabs Thanh Điều Hướng
+            e('nav', { className: 'flex bg-white border-b border-slate-200 sticky top-0 z-50 font-bold text-slate-600' },
               [['lich-lam-viec', 'Lịch Làm Việc 🔒'], ['report-daily', 'Report Daily 🔒'], ['vi-pham', 'Vi Phạm 🔓'], ['bien-ban', 'Biên Bản 🔓']].map(tab => 
-                e('button', { key: tab[0], onClick: () => setActiveTab(tab[0]), className: 'flex-1 text-center py-4 text-xs font-bold border-b-4 ' + (activeTab === tab[0] ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-transparent text-slate-500') }, tab[1])
+                e('button', { key: tab[0], onClick: () => setActiveTab(tab[0]), className: 'flex-1 text-center py-3 text-[11px] md:text-xs border-b-4 transition-all ' + (activeTab === tab[0] ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-transparent hover:bg-slate-50') }, tab[1])
               )
             ),
-            e('main', { className: 'p-4 md:p-6 max-w-7xl mx-auto w-full flex-1' },
-              ((activeTab === 'lich-lam-viec' || activeTab === 'report-daily') && !isLoggedIn) ? loginView : e('div', null,
-                activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-5 rounded-xl shadow border' },
-                  e('h2', { className: 'font-bold text-sm mb-3 border-l-4 border-orange-500 pl-2' }, 'LỊCH LÀM VIỆC - DỮ LIỆU ĐỒNG BỘ CHUẨN KHU VỰC'),
+
+            // Vùng nội dung chính
+            e('main', { className: 'p-4 max-w-7xl mx-auto w-full flex-1' },
+              ((activeTab === 'lich-lam-viec' || activeTab === 'report-daily') && !isLoggedIn) ? loginScreen : e('div', null,
+                
+                // TAB 1: LỊCH LÀM VIỆC (QUÉT CHẶN ĐỘNG)
+                activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-5 rounded-xl shadow-sm border space-y-4' },
+                  e('div', { className: 'border-l-4 border-orange-500 pl-3' },
+                    e('h2', { className: 'font-bold text-sm text-slate-900 uppercase' }, 'Lịch Làm Việc Theo Tuần (Dấu mốc dòng 3)'),
+                    e('p', { className: 'text-slate-500 font-medium text-[11px] mt-0.5' }, 'Thời gian thực tế kéo dài: ', e('span', { className: 'text-orange-600 font-bold' }, timeRangeHeader))
+                  ),
                   e('div', { className: 'overflow-x-auto' },
-                    e('table', { className: 'w-full text-xs border' },
-                      e('thead', null, e('tr', { className: 'bg-slate-100 font-bold' }, e('th', { className: 'p-2 border text-left' }, 'Nhân Sự Vận Hành'), e('th', { className: 'p-2 border text-left' }, 'Vị Trí'), e('th', { className: 'p-2 border text-left' }, 'Khung Giờ Ca'), e('th', { className: 'p-2 border text-left' }, 'Trạng Thái'))),
-                      e('tbody', null, 
-                        staffData.length === 0 ? e('tr', null, e('td', { colSpan: 4, className: 'p-4 text-center text-slate-400' }, 'Không tìm thấy dòng dữ liệu phù hợp tại Sheet này.')) :
-                        staffData.map(p => e('tr', { key: p.id, className: 'hover:bg-slate-50' }, e('td', { className: 'p-2 border font-bold' }, p.name), e('td', { className: 'p-2 border text-slate-600' }, p.role), e('td', { className: 'p-2 border font-mono text-slate-500' }, p.shift), e('td', { className: 'p-2 border' }, e('span', { className: 'bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold' }, p.status)))),
-                        e('tr', { className: 'bg-amber-50 text-center font-bold text-amber-800 text-[10px]' }, e('td', { colSpan: 4, className: 'p-3 border uppercase' }, '🛑 Dữ liệu tự động phân loại độc lập theo luồng cấu hình'))
+                    e('table', { className: 'w-full text-left border border-slate-200' },
+                      e('thead', null, e('tr', { className: 'bg-slate-100 font-bold text-slate-700 border-b' }, e('th', { className: 'p-2.5 border-r' }, 'Họ và Tên Nhân Sự (Dộc lập D5:D46)'), e('th', { className: 'p-2.5' }, 'Lịch Trình Chi Tiết Ca Trực'))),
+                      e('tbody', { className: 'divide-y divide-slate-200' },
+                        staffData.map(st => e('tr', { key: st.id, className: 'hover:bg-slate-50' }, e('td', { className: 'p-2.5 border-r font-bold text-slate-900' }, st.name), e('td', { className: 'p-2.5 text-slate-600 font-mono' }, st.shiftInfo)))
+                      )
+                    )
+                  ),
+                  e('div', { className: 'bg-amber-50 border border-amber-200 p-2.5 rounded-lg text-amber-800 flex items-center font-medium gap-1.5' }, '🛑 Hệ thống đã kích hoạt vùng chặn tự động tại dòng chứa ô chữ: "Nhóm năng suất". Mọi dòng chèn thêm phía trên vẫn được quét đầy đủ.')
+                ),
+
+                // TAB 2: REPORT DAILY TÍNH TOÁN BẢNG ĐIỀU KHIỂN
+                activeTab === 'report-daily' && e('div', { className: 'space-y-4' },
+                  e('div', { className: 'bg-white p-4 rounded-xl shadow-sm border grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3' },
+                    [['i3', 'Công Leader (I3)'], ['i4', 'Công NV Năng suất (I4)'], ['i5', 'Công phụ (I5)'], ['i6', 'I6 tăng cường'], ['i7', 'I7 nghỉ ca'], ['i8', 'I8 điều động'], ['e14', 'Sản lượng CBS 1 (E14)'], ['e15', 'Sản lượng CBS 2 (E15)'], ['e16', 'Sản lượng E16'], ['k12', 'K12 KPI đơn'], ['f10', 'F10 Giờ làm việc'], ['h4', 'H4 Đạt'], ['g4', 'G4 Kế hoạch'], ['h5', 'H5 Thực đạt'], ['g5', 'G5 Chỉ tiêu'], ['g7', 'G7 Chỉ số'], ['g8', 'G8 Tổng'], ['h7', 'H7 Thực tế'], ['h8', 'H8 Đếm']].map(item => 
+                      e('div', { key: item[0], className: 'space-y-1' },
+                        e('label', { className: 'block text-slate-500 font-medium text-[11px]' }, item[1]),
+                        e('input', { type: 'number', className: 'w-full p-2 border rounded-lg outline-none bg-slate-50 focus:bg-white focus:border-orange-500 font-mono', value: reportInputs[item[0]], onChange: ev => handleInputChange(item[0], ev.target.value) })
+                      )
+                    )
+                  ),
+                  e('div', { className: 'bg-white p-5 rounded-xl shadow-sm border' },
+                    e('h3', { className: 'font-bold text-slate-800 border-b pb-2 text-xs mb-3 uppercase tracking-wide' }, 'BẢNG TÍNH TOÁN THEO CÔNG THỨC CHUẨN ĐỒNG BỘ'),
+                    e('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
+                      e('div', { className: 'space-y-2 bg-slate-50 p-4 rounded-xl border font-medium text-slate-700' },
+                        e('div', { className: 'flex justify-between border-b pb-1.5' }, e('span', null, 'L15 (Công Leader):'), e('span', { className: 'font-bold font-mono text-slate-900' }, computedReport.l15)),
+                        e('div', { className: 'flex justify-between border-b pb-1.5' }, e('span', null, 'L16 (Công NV Năng suất):'), e('span', { className: 'font-bold font-mono text-slate-900' }, computedReport.l16)),
+                        e('div', { className: 'flex justify-between border-b pb-1.5' }, e('span', null, 'L17 (Công phụ):'), e('span', { className: 'font-bold font-mono text-slate-900' }, computedReport.l17)),
+                        e('div', { className: 'flex justify-between border-b pb-1.5' }, e('span', null, 'L18 (Tổng Nghỉ + Điều động):'), e('span', { className: 'font-bold font-mono text-slate-900' }, computedReport.l18)),
+                        e('div', { className: 'flex justify-between' }, e('span', null, 'L19 (I6):'), e('span', { className: 'font-bold font-mono text-slate-900' }, computedReport.l19))
+                      ),
+                      e('div', { className: 'space-y-2 bg-orange-50/50 p-4 rounded-xl border border-orange-100 font-medium text-slate-700' },
+                        e('div', { className: 'flex justify-between border-b pb-1.5 border-orange-100' }, e('span', null, 'Tổng sản lượng xử lý (Q6):'), e('span', { className: 'font-bold text-orange-700 font-mono text-xs' }, computedReport.q6.toLocaleString() + ' đơn')),
+                        e('div', { className: 'flex justify-between border-b pb-1.5 border-orange-100' }, e('span', null, 'Năng suất đơn/giờ công (L12):'), e('span', { className: 'font-bold text-green-700 font-mono text-xs' }, computedReport.l12 + ' đơn/h')),
+                        e('div', { className: 'flex justify-between border-b pb-1.5 border-orange-100' }, e('span', null, 'Tỷ lệ đáp ứng thực tế H4/G4 (R8):'), e('span', { className: 'font-bold font-mono text-slate-900' }, computedReport.r8)),
+                        e('div', { className: 'flex justify-between border-b pb-1.5 border-orange-100' }, e('span', null, 'Tỷ lệ H5/G5 (R9):'), e('span', { className: 'font-bold font-mono text-slate-900' }, computedReport.r9)),
+                        e('div', { className: 'flex justify-between font-bold' }, e('span', null, 'Tỷ lệ gộp SUM(G7:G8)/SUM(H7:H8) (R10):'), e('span', { className: 'font-mono text-blue-700' }, computedReport.r10))
                       )
                     )
                   )
                 ),
-                activeTab === 'report-daily' && e('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-5 text-xs' },
-                  e('div', { className: 'bg-white p-5 rounded-xl shadow border space-y-3' },
-                    e('h3', { className: 'font-bold text-blue-600 uppercase border-b pb-2' }, 'Khu Vực Điền Chỉ Số Ca Trực (Input)'),
-                    e('div', { className: 'grid grid-cols-2 gap-3' },
-                      ['i3', 'Công Leader (I3)', 'i4', 'Công NV Năng suất (I4)', 'e14', 'Sản lượng CBS 1 (E14)', 'e15', 'Sản lượng CBS 2 (E15)'].map((label, idx, arr) => 
-                        idx % 2 === 0 ? e('div', { key: label }, arr[idx+1] + ': ', e('input', { type: 'number', className: 'w-full p-2 border rounded mt-1', value: reportInputs[label], onChange: ev => handleNumChange(label, ev.target.value) })) : null
+
+                // TAB 3 & 4: VI PHẠM / BIÊN BẢN (AI CŨNG CÓ THỂ XEM CÔNG KHAI)
+                (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-4' },
+                  // Bộ lọc tìm kiếm nâng cao công khai
+                  e('div', { className: 'bg-white p-4 rounded-xl shadow-sm border flex flex-wrap gap-3 items-center justify-between' },
+                    e('div', { className: 'flex items-center gap-2' },
+                      e('span', { className: 'text-emerald-700 font-black uppercase text-[11px] tracking-wider' }, '🔓 Không gian công khai'),
+                      e('span', { className: 'text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full' }, activeTab === 'vi-pham' ? 'Bảng Vi Phạm' : 'Bảng Biên Bản')
+                    ),
+                    e('div', { className: 'flex gap-2 flex-wrap w-full sm:w-auto' },
+                      e('input', { type: 'text', placeholder: 'Tìm theo tên thật...', className: 'p-2 border rounded-lg outline-none text-[11px] focus:border-orange-500 w-full sm:w-40', value: filterName, onChange: ev => setFilterName(ev.target.value) }),
+                      e('input', { type: 'text', placeholder: 'Tìm Ngày (YYYY-MM-DD)...', className: 'p-2 border rounded-lg outline-none text-[11px] focus:border-orange-500 w-full sm:w-40', value: filterDate, onChange: ev => setFilterDate(ev.target.value) }),
+                      e('select', { className: 'p-2 border rounded-lg bg-white text-[11px] outline-none w-full sm:w-36', value: filterMonth, onChange: ev => setFilterMonth(ev.target.value) },
+                        e('option', { value: '' }, 'Tất cả các tháng'), e('option', { value: '05' }, 'Tháng 05'), e('option', { value: '06' }, 'Tháng 06'), e('option', { value: '07' }, 'Tháng 07')
                       )
                     )
                   ),
-                  e('div', { className: 'bg-white p-5 rounded-xl shadow border flex flex-col justify-between' },
-                    e('div', null,
-                      e('h3', { className: 'font-bold text-orange-600 uppercase border-b pb-2' }, 'Bảng Tính Toán Đầu Ra Biểu Mẫu (Output)'),
-                      e('div', { className: 'space-y-2.5 bg-slate-50 p-3 rounded-lg border mt-3 font-medium' },
-                        e('div', { className: 'flex justify-between' }, e('span', null, 'Tổng sản lượng xử lý (Q6):'), e('span', { className: 'font-bold text-blue-700' }, computedValues.Q6.toLocaleString() + ' đơn')),
-                        e('div', { className: 'flex justify-between' }, e('span', null, 'Năng suất đơn/giờ công (L12):'), e('span', { className: 'font-bold text-green-700' }, computedValues.L12 + ' đơn/h')),
-                        e('div', { className: 'flex justify-between' }, e('span', null, 'Tỷ lệ đáp ứng thực tế (R8):'), e('span', { className: 'font-bold font-mono' }, computedValues.R8))
+
+                  // Khối Thống Kê Tỷ Lệ Lỗi & Tần Suất Cá Nhân
+                  e('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4 font-medium text-slate-700' },
+                    e('div', { className: 'bg-white p-4 rounded-xl shadow-sm border' },
+                      e('h4', { className: 'font-bold text-slate-500 mb-2 uppercase text-[10px]' }, '📊 Tỷ lệ lỗi phân bổ giữa các tháng:'),
+                      e('div', { className: 'space-y-1.5 font-mono' },
+                        Object.entries(analyticsData.monthDistribution).map(entry => 
+                          e('div', { key: entry[0], className: 'flex justify-between' }, e('span', null, 'Tháng ' + entry[0] + ':'), e('span', { className: 'font-bold text-orange-600' }, entry[1] + ' vụ'))
+                        )
                       )
                     ),
-                    e('div', { className: 'text-[10px] font-mono text-slate-400 border-t pt-2 mt-4' }, 'Dải đếm công tự động: L15=' + computedValues.L15 + ' | L16=' + computedValues.L16)
-                  )
-                ),
-                (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-4' },
-                  e('div', { className: 'bg-white p-4 rounded-xl shadow border flex justify-between flex-wrap gap-3 items-center text-xs' },
-                    e('span', { className: 'font-bold text-emerald-700' }, '🔓 Không gian công khai bộ lọc Real-time'),
-                    e('div', { className: 'flex gap-2 w-full sm:w-auto' },
-                      e('input', { type: 'text', placeholder: 'Tìm theo tên...', className: 'p-2 border rounded-lg w-full sm:w-48 outline-none focus:border-orange-500', value: filterName, onChange: ev => setFilterName(ev.target.value) }),
-                      e('select', { className: 'p-2 border rounded-lg bg-white outline-none', value: filterMonth, onChange: ev => setFilterMonth(ev.target.value) },
-                        e('option', { value: '' }, 'Tất cả các tháng'), e('option', { value: '05' }, 'Tháng 05'), e('option', { value: '06' }, 'Tháng 06')
+                    e('div', { className: 'bg-white p-4 rounded-xl shadow-sm border md:col-span-2' },
+                      e('h4', { className: 'font-bold text-slate-500 mb-2 uppercase text-[10px]' }, '🔥 Tần suất lỗi lặp lại theo từng cá nhân:'),
+                      e('div', { className: 'flex flex-wrap gap-2 max-h-24 overflow-y-auto' },
+                        Object.entries(analyticsData.staffCounts).length === 0 ? 'Chưa ghi nhận dữ liệu.' :
+                        Object.entries(analyticsData.staffCounts).map(st => 
+                          e('span', { key: st[0], className: 'bg-slate-50 border border-slate-200 px-2 py-1 rounded text-slate-800' }, e('strong', null, st[0]), ': ', e('strong', { className: 'text-red-600' }, st[1] + ' lần'))
+                        )
                       )
                     )
                   ),
-                  e('div', { className: 'bg-white p-4 rounded-xl shadow border text-xs' },
-                    e('h4', { className: 'font-bold text-slate-500 mb-2 uppercase' }, 'Tần suất xuất hiện theo bộ lọc:'),
-                    e('div', { className: 'flex flex-wrap gap-2' },
-                      Object.entries(processedData.individualCounts).map(entry => e('span', { key: entry[0], className: 'bg-slate-50 border px-2.5 py-1 rounded text-slate-800' }, e('strong', null, entry[0]), ': ', e('strong', { className: 'text-red-600' }, entry[1] + ' lần')))
-                    )
-                  ),
-                  e('div', { className: 'bg-white rounded-xl shadow overflow-hidden border' },
+
+                  // Bảng danh sách chi tiết
+                  e('div', { className: 'bg-white rounded-xl shadow-sm border overflow-hidden' },
                     e('div', { className: 'overflow-x-auto' },
+                      activeTab === 'vi-pham' ? 
                       e('table', { className: 'w-full text-left text-xs border-collapse' },
-                        e('thead', { className: 'bg-slate-50 font-bold text-[10px] text-slate-600 uppercase' }, e('tr', null, e('th', { className: 'p-3 border-b' }, 'Thời Gian'), e('th', { className: 'p-3 border-b' }, 'Họ Tên'), e('th', { className: 'p-3 border-b' }, 'Nội Dung Sự Việc / Lỗi Vi Phạm'), e('th', { className: 'p-3 border-b' }, 'User ID'))),
-                        e('tbody', { className: 'divide-y' },
-                          processedData.filtered.length === 0 ? e('tr', null, e('td', { colSpan: 4, className: 'p-4 text-center text-slate-400' }, 'Không tìm thấy dữ liệu phù hợp.')) :
-                          processedData.filtered.map(item => e('tr', { key: item.id, className: 'hover:bg-slate-50/80' }, e('td', { className: 'p-3 text-slate-500 font-mono' }, item.time || item.date), e('td', { className: 'p-3 font-bold text-slate-900' }, item.name), e('td', { className: 'p-3 text-red-600 font-semibold' }, item.error || item.content), e('td', { className: 'p-3 text-slate-400 font-mono' }, item.userId)))
+                        e('thead', { className: 'bg-slate-50 font-bold text-slate-600 border-b' }, e('tr', null, e('th', { className: 'p-3' }, 'Thời Gian'), e('th', { className: 'p-3' }, 'Mã Gọi'), e('th', { className: 'p-3' }, 'Họ Tên Thật'), e('th', { className: 'p-3 text-red-600' }, 'Nội Dung Lỗi'), e('th', { className: 'p-3' }, 'User ID'), e('th', { className: 'p-3' }, 'Người Báo Cáo'))),
+                        e('tbody', { className: 'divide-y divide-slate-200' },
+                          analyticsData.filtered.map(vi => e('tr', { key: vi.id, className: 'hover:bg-slate-50/80 font-medium' }, e('td', { className: 'p-3 font-mono text-slate-500' }, vi.time), e('td', { className: 'p-3 font-bold text-slate-700' }, vi.code), e('td', { className: 'p-3 font-black text-slate-900' }, vi.name), e('td', { className: 'p-3 text-red-600 font-bold' }, vi.error), e('td', { className: 'p-3 font-mono text-slate-400' }, vi.userId), e('td', { className: 'p-3 text-slate-600' }, vi.reporter)))
+                        )
+                      ) : 
+                      e('table', { className: 'w-full text-left text-xs border-collapse' },
+                        e('thead', { className: 'bg-slate-50 font-bold text-slate-600 border-b' }, e('tr', null, e('th', { className: 'p-3' }, 'Ngày Lập'), e('th', { className: 'p-3' }, 'Username'), e('th', { className: 'p-3' }, 'Tên Thật'), e('th', { className: 'p-3 text-amber-700' }, 'Nội Dung Biên Bản'), e('th', { className: 'p-3' }, 'User ID'), e('th', { className: 'p-3' }, 'Người Lập'), e('th', { className: 'p-3' }, 'Hình Ảnh'))),
+                        e('tbody', { className: 'divide-y divide-slate-200' },
+                          analyticsData.filtered.map(bb => e('tr', { key: bb.id, className: 'hover:bg-slate-50/80 font-medium' }, e('td', { className: 'p-3 font-mono text-slate-500' }, bb.date), e('td', { className: 'p-3 text-slate-600' }, bb.username), e('td', { className: 'p-3 font-black text-slate-900' }, bb.name), e('td', { className: 'p-3 text-slate-800' }, bb.content), e('td', { className: 'p-3 font-mono text-slate-400' }, bb.userId), e('td', { className: 'p-3 text-slate-600' }, bb.creator), e('td', { className: 'p-3' }, bb.image ? e('a', { href: bb.image, target: '_blank', className: 'text-blue-600 font-bold hover:underline' }, 'Xem ảnh 🖼️') : 'Không có')))
                         )
                       )
                     )
