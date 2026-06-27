@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Điều Hành Sort KTC 01 - Live Data</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 </head>
@@ -15,12 +13,19 @@
     <div id="root"></div>
 
     <script>
-        // Chuyển link pubhtml sang dạng export csv để ứng dụng đọc trực tiếp dòng dữ liệu
-        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv/pub?output=csv"; 
+        // Cấu hình Base ID gốc từ link của bạn
+        const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv/pub?output=csv";
+        
+        // TÁCH LINK THEO TỪNG SHEET CHÍNH XÁC (Thay đổi số gid nếu cấu hình sheet của bạn có ID khác)
+        const URL_LICH_LAM_VIEC = BASE_URL + "&gid=0"; 
+        const URL_VI_PHAM        = BASE_URL + "&gid=1355152068"; // ID ví dụ của trang Vi Phạm, nếu lỗi hãy giữ nguyên BASE_URL nếu nó nằm ở sheet đầu tiên
+        const URL_BIEN_BAN       = BASE_URL + "&gid=1864197994"; // ID ví dụ của trang Biên Bản
+
         const e = React.createElement;
 
-        // Hàm tiện ích phân tách chuỗi CSV chuẩn xác (xử lý cả dấu phẩy nằm trong ngoặc kép)
+        // Bộ phân tách dữ liệu CSV
         function parseCSV(text) {
+          if (!text) return [];
           let lines = text.split(/\r\n|\n/);
           return lines.map(line => {
             let result = [];
@@ -61,73 +66,83 @@
           });
 
           React.useEffect(() => {
-            async function loadGoogleSheetLive() {
+            async function loadAllSheets() {
               try {
                 setIsLoading(true);
-                const response = await fetch(CSV_URL);
-                const csvText = await response.text();
-                const rows = parseCSV(csvText);
+
+                // Gọi đồng thời hoặc tuần tự các URL để tránh nhầm dòng dữ liệu chéo nhau
+                // TAB 1: Tải Lịch Làm Việc (Giả định nằm ở Sheet đầu tiên hoặc GID chỉ định)
+                const resStaff = await fetch(URL_LICH_LAM_VIEC).catch(() => fetch(BASE_URL));
+                const textStaff = await resStaff.text();
+                const rowsStaff = parseCSV(textStaff);
                 
-                console.log("Đã đọc tổng cộng số dòng từ Google Sheet: ", rows.length);
-
                 let tempStaff = [];
-                let tempViolation = [];
-                let tempBienBan = [];
-
-                // Đọc bóc tách dữ liệu theo từng dòng thực tế từ File Sheet
-                rows.forEach((row, index) => {
-                  if (index === 0) return; // Bỏ qua dòng tiêu đề gốc
-
-                  // 1. Phân tách mảng Lịch Làm Việc (Cột họ tên ở Cột D [chỉ số 3])
-                  if (row[3]) { 
+                rowsStaff.forEach((row, idx) => {
+                  if (idx === 0) return;
+                  // Map chính xác cột dữ liệu lịch làm việc (Họ tên: cột D[3] hoặc C[2] tùy cấu hình thực tế)
+                  if (row[3] || row[2] || row[1]) {
                     tempStaff.push({
-                      id: index,
-                      name: row[3], 
-                      role: row[4] || "Nhân viên Sort", 
-                      shift: row[5] || "Theo Ca Giao Nhận",
+                      id: idx,
+                      name: row[3] || row[2] || row[1],
+                      role: row[4] || row[3] || "Nhân viên",
+                      shift: row[5] || "Theo Ca",
                       status: row[6] || "Active"
-                    });
-                  }
-
-                  // 2. Phân tách danh sách Vi Phạm
-                  if (row[1] && row[2]) { 
-                    tempViolation.push({
-                      id: index,
-                      time: row[0] || "Live Data",
-                      code: row[1],
-                      name: row[2],
-                      error: row[3] || "Lỗi quy trình vận hành",
-                      userId: row[4] || "UID_KTC"
-                    });
-                  }
-
-                  // 3. Phân tách danh sách Biên Bản
-                  if (row[7] || row[8]) {
-                    tempBienBan.push({
-                      id: index,
-                      date: row[7] || "Live Data",
-                      username: row[8] || "N/A",
-                      name: row[9] || "Nhân sự KTC",
-                      content: row[10] || "Ghi nhận biên bản sự vụ",
-                      userId: row[11] || "UID_KTC"
                     });
                   }
                 });
 
-                // Cập nhật lại mảng dữ liệu sống từ Google Sheet
-                setStaffData(tempStaff.length > 0 ? tempStaff : [
-                  { id: 1, name: "Nguyễn Trương Thanh Tiến", role: "Leader", shift: "07:30 - 16:30", status: "Active" }
-                ]);
+                // TAB 3: Tải dữ liệu Vi Phạm (Cố gắng fetch link chuyên biệt, nếu không có thì lấy luồng phụ)
+                const resViolation = await fetch(URL_VI_PHAM).catch(() => fetch(BASE_URL));
+                const textViolation = await resViolation.text();
+                const rowsViolation = parseCSV(textViolation);
+                
+                let tempViolation = [];
+                rowsViolation.forEach((row, idx) => {
+                  if (idx === 0) return;
+                  // Chỉ lấy nếu dòng có chứa thông tin vi phạm đặc trưng
+                  if (row[2] && row[1]) {
+                    tempViolation.push({
+                      id: idx,
+                      time: row[0],
+                      code: row[1],
+                      name: row[2],
+                      error: row[3] || "Lỗi vận hành",
+                      userId: row[4] || "KTC_ID"
+                    });
+                  }
+                });
+
+                // TAB 4: Tải dữ liệu Biên Bản
+                const resBienBan = await fetch(URL_BIEN_BAN).catch(() => fetch(BASE_URL));
+                const textBienBan = await resBienBan.text();
+                const rowsBienBan = parseCSV(textBienBan);
+                
+                let tempBienBan = [];
+                rowsBienBan.forEach((row, idx) => {
+                  if (idx === 0) return;
+                  if (row[9] || row[7]) {
+                    tempBienBan.push({
+                      id: idx,
+                      date: row[7] || row[0],
+                      username: row[8] || "N/A",
+                      name: row[9] || row[2],
+                      content: row[10] || row[3],
+                      userId: row[11] || "KTC_ID"
+                    });
+                  }
+                });
+
+                setStaffData(tempStaff);
                 setViolationData(tempViolation);
                 setBienbanData(tempBienBan);
                 setIsLoading(false);
 
               } catch (error) {
-                console.error("Lỗi kết nối hoặc đồng bộ luồng dữ liệu Sheet CSV:", error);
+                console.error("Lỗi phân tách luồng dữ liệu riêng biệt:", error);
                 setIsLoading(false);
               }
             }
-            loadGoogleSheetLive();
+            loadAllSheets();
           }, []);
 
           const handleNumChange = (key, val) => {
@@ -164,7 +179,7 @@
           if (isLoading) {
             return e('div', { className: 'text-center py-20 text-sm font-medium text-slate-500' },
               e('div', { className: 'w-6 h-6 border-2 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-2' }),
-              'Đang đồng bộ hóa dữ liệu từ link Google Sheet trực tuyến...'
+              'Đang bóc tách luồng dữ liệu riêng biệt từ Google Sheet...'
             );
           }
 
@@ -179,7 +194,7 @@
 
           return e('div', { className: 'min-h-screen flex flex-col font-sans' },
             e('header', { className: 'bg-gradient-to-r from-orange-600 to-amber-600 text-white p-5 shadow flex justify-between items-center' },
-              e('div', null, e('h1', { className: 'text-xl font-bold' }, 'HỆ THỐNG ĐIỀU HÀNH WEB - SORT KTC 01'), e('p', { className: 'text-xs opacity-90' }, '● Đang đồng bộ hóa trực tuyến qua Google Sheet API (Real-time)')),
+              e('div', null, e('h1', { className: 'text-xl font-bold' }, 'HỆ THỐNG ĐIỀU HÀNH WEB - SORT KTC 01'), e('p', { className: 'text-xs opacity-90' }, '● Đang đồng bộ hóa độc lập đa biểu mẫu (Multi-Sheet Active)')),
               isLoggedIn && e('button', { className: 'bg-orange-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold', onClick: () => setIsLoggedIn(false) }, 'Đăng xuất 🔓')
             ),
             e('nav', { className: 'flex bg-white border-b sticky top-0 z-40' },
@@ -190,13 +205,14 @@
             e('main', { className: 'p-4 md:p-6 max-w-7xl mx-auto w-full flex-1' },
               ((activeTab === 'lich-lam-viec' || activeTab === 'report-daily') && !isLoggedIn) ? loginView : e('div', null,
                 activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-5 rounded-xl shadow border' },
-                  e('h2', { className: 'font-bold text-sm mb-3 border-l-4 border-orange-500 pl-2' }, 'LỊCH LÀM VIỆC - DỮ LIỆU ĐỒNG BỘ THỰC TẾ'),
+                  e('h2', { className: 'font-bold text-sm mb-3 border-l-4 border-orange-500 pl-2' }, 'LỊCH LÀM VIỆC - DỮ LIỆU ĐỒNG BỘ CHUẨN KHU VỰC'),
                   e('div', { className: 'overflow-x-auto' },
                     e('table', { className: 'w-full text-xs border' },
                       e('thead', null, e('tr', { className: 'bg-slate-100 font-bold' }, e('th', { className: 'p-2 border text-left' }, 'Nhân Sự Vận Hành'), e('th', { className: 'p-2 border text-left' }, 'Vị Trí'), e('th', { className: 'p-2 border text-left' }, 'Khung Giờ Ca'), e('th', { className: 'p-2 border text-left' }, 'Trạng Thái'))),
                       e('tbody', null, 
+                        staffData.length === 0 ? e('tr', null, e('td', { colSpan: 4, className: 'p-4 text-center text-slate-400' }, 'Không tìm thấy dòng dữ liệu phù hợp tại Sheet này.')) :
                         staffData.map(p => e('tr', { key: p.id, className: 'hover:bg-slate-50' }, e('td', { className: 'p-2 border font-bold' }, p.name), e('td', { className: 'p-2 border text-slate-600' }, p.role), e('td', { className: 'p-2 border font-mono text-slate-500' }, p.shift), e('td', { className: 'p-2 border' }, e('span', { className: 'bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold' }, p.status)))),
-                        e('tr', { className: 'bg-amber-50 text-center font-bold text-amber-800 text-[10px]' }, e('td', { colSpan: 4, className: 'p-3 border uppercase' }, '🛑 Đang hiển thị Live Data lấy trực tiếp từ tệp tính công khai'))
+                        e('tr', { className: 'bg-amber-50 text-center font-bold text-amber-800 text-[10px]' }, e('td', { colSpan: 4, className: 'p-3 border uppercase' }, '🛑 Dữ liệu tự động phân loại độc lập theo luồng cấu hình'))
                       )
                     )
                   )
@@ -243,6 +259,7 @@
                       e('table', { className: 'w-full text-left text-xs border-collapse' },
                         e('thead', { className: 'bg-slate-50 font-bold text-[10px] text-slate-600 uppercase' }, e('tr', null, e('th', { className: 'p-3 border-b' }, 'Thời Gian'), e('th', { className: 'p-3 border-b' }, 'Họ Tên'), e('th', { className: 'p-3 border-b' }, 'Nội Dung Sự Việc / Lỗi Vi Phạm'), e('th', { className: 'p-3 border-b' }, 'User ID'))),
                         e('tbody', { className: 'divide-y' },
+                          processedData.filtered.length === 0 ? e('tr', null, e('td', { colSpan: 4, className: 'p-4 text-center text-slate-400' }, 'Không tìm thấy dữ liệu phù hợp.')) :
                           processedData.filtered.map(item => e('tr', { key: item.id, className: 'hover:bg-slate-50/80' }, e('td', { className: 'p-3 text-slate-500 font-mono' }, item.time || item.date), e('td', { className: 'p-3 font-bold text-slate-900' }, item.name), e('td', { className: 'p-3 text-red-600 font-semibold' }, item.error || item.content), e('td', { className: 'p-3 text-slate-400 font-mono' }, item.userId)))
                         )
                       )
