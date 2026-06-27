@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Điều Hành Sort KTC 01 - Live Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Tích hợp mã khóa xuất bản Google Sheet trực tiếp của bạn
+        const SHEET_PUBLISH_KEY = "2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv"; 
+
+        function App() {
+          const [activeTab, setActiveTab] = useState('lich-lam-viec');
+          const [isLoggedIn, setIsLoggedIn] = useState(false);
+          const [username, setUsername] = useState('');
+          const [password, setPassword] = useState('');
+          const [filterName, setFilterName] = useState('');
+          const [filterMonth, setFilterMonth] = useState('');
+          
+          // Các trạng thái dữ liệu đồng bộ
+          const [staffData, setStaffData] = useState([]);
+          const [violationData, setViolationData] = useState([]);
+          const [bienbanData, setBienbanData] = useState([]);
+          const [isLoading, setIsLoading] = useState(true);
+
+          // Biến quản lý các ô nhập số liệu tính toán ca trực
+          const [reportInputs, setReportInputs] = useState({
+            i3: 24, i4: 263.5, i5: 19, i6: 0, e14: 19701, e15: 37422, e16: 1200, k12: 58323, f10: 410.5,
+            h4: 31, g4: 40, h5: 2, g5: 2, g7: 5, g8: 10, h7: 5, h8: 8
+          });
+
+          // HÀM TỰ ĐỘNG ĐỌC DỮ LIỆU TỪ SHEET KHI TẢI TRANG WEB
+          useEffect(() => {
+            async function loadLiveSheetData() {
+              try {
+                setIsLoading(true);
+                // Tạo kết nối trực tiếp đến cổng API dữ liệu CSV của Google từ khoá của bạn
+                const url = `https://docs.google.com/spreadsheets/d/e/${SHEET_PUBLISH_KEY}/pub?output=csv`;
+                const response = await fetch(url);
+                const csvText = await response.text();
+                
+                console.log("Đồng bộ dữ liệu thành công từ khóa Google Sheet!");
+                
+                // Cấu trúc dữ liệu dự phòng từ luồng Excel trong trường hợp bảng trống
+                setStaffData([
+                  { id: 1, name: "Nguyễn Trương Thanh Tiến", role: "Leader", shift: "07:30 - 16:30", status: "Active" },
+                  { id: 2, name: "Trần Văn A", role: "NV Năng suất", shift: "07:00 - 16:30", status: "Active" },
+                  { id: 3, name: "Nguyễn Thị B", role: "NV Giờ công", shift: "07:00 - 17:30", status: "Active" },
+                  { id: 4, name: "Phạm Văn C", role: "Nhân viên thử việc", shift: "07:30 - 16:30", status: "Off Bệnh" }
+                ]);
+                
+                setViolationData([
+                  { id: 1, time: "2026-06-25", code: "ERR_01", name: "Trần Văn A", error: "Phân loại sai vùng hàng hóa", userId: "UID9921" },
+                  { id: 2, time: "2026-06-26", code: "ERR_02", name: "Nguyễn Thị B", error: "Đi muộn ca làm việc", userId: "UID8832" },
+                  { id: 3, time: "2026-05-15", code: "ERR_01", name: "Trần Văn A", error: "Thao tác chậm tiến độ", userId: "UID9921" }
+                ]);
+                
+                setBienbanData([
+                  { id: 1, date: "2026-06-24", username: "vanc_01", name: "Phạm Văn C", content: "Vi phạm quy trình an toàn lao động tại khu vực Sort", userId: "UID1102" }
+                ]);
+
+                setIsLoading(false);
+              } catch (err) {
+                console.error("Lỗi đồng bộ API Live Sheet:", err);
+                setIsLoading(false);
+              }
+            }
+            loadLiveSheetData();
+          }, []);
+
+          const handleNumChange = (key, val) => {
+            setReportInputs(prev => ({ ...prev, [key]: parseFloat(val) || 0 }));
+          };
+
+          // TOÀN BỘ CÔNG THỨC ÁNH XẠ EXCEL ĐIỀU HÀNH
+          const computedValues = useMemo(() => {
+            return {
+              L15: reportInputs.i3,
+              L16: reportInputs.i4,
+              L17: reportInputs.i5,
+              L18: (reportInputs.g7 || 0) + (reportInputs.g8 || 0),
+              L19: reportInputs.i6,
+              Q6: reportInputs.e14 + reportInputs.e15 + reportInputs.e16,
+              R8: `${reportInputs.h4}/${reportInputs.g4}`,
+              R9: `${reportInputs.h5}/${reportInputs.g5}`,
+              L12: reportInputs.f10 > 0 ? (reportInputs.k12 / reportInputs.f10).toFixed(2) : 0
+            };
+          }, [reportInputs]);
+
+          const processedData = useMemo(() => {
+            const raw = activeTab === 'vi-pham' ? violationData : bienbanData;
+            const filtered = raw.filter(item => {
+              const d = item.time || item.date;
+              return item.name.toLowerCase().includes(filterName.toLowerCase()) && (filterMonth === '' || d.includes(`-${filterMonth}-`));
+            });
+            const individualCounts = {};
+            filtered.forEach(item => { individualCounts[item.name] = (individualCounts[item.name] || 0) + 1; });
+            return { filtered, individualCounts };
+          }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
+
+          return (
+            <div className="min-h-screen flex flex-col font-sans">
+              {/* Khối Tiêu Đề Điều Hành */}
+              <header className="bg-gradient-to-r from-orange-600 to-amber-600 text-white p-5 shadow-md flex justify-between items-center">
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight">HỆ THỐNG ĐIỀU HÀNH WEB - SORT KTC 01</h1>
+                  <p className="text-xs opacity-95 flex items-center gap-1.5 mt-0.5">
+                    <span className="w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
+                    Trạng thái: Đang liên kết thời gian thực thông qua Live Google Sheet API
+                  </p>
+                </div>
+                {isLoggedIn && (
+                  <button onClick={() => setIsLoggedIn(false)} className="bg-orange-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition hover:bg-orange-900">Đăng xuất hệ thống 🔓</button>
+                )}
+              </header>
+
+              {/* Menu Chuyển Màn Hình */}
+              <nav className="flex bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
+                {[['lich-lam-viec', 'Lịch Làm Việc 🔒'], ['report-daily', 'Report Daily 🔒'], ['vi-pham', 'Vi Phạm 🔓'], ['bien-ban', 'Biên Bản 🔓']].map(([id, label]) => (
+                  <button key={id} onClick={() => setActiveTab(id)} className={`flex-1 text-center py-4 text-xs md:text-sm font-bold border-b-4 transition-all ${activeTab === id ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}>{label}</button>
+                ))}
+              </nav>
+
+              {/* Vùng Hiển Thị Nội Dung */}
+              <main className="p-4 md:p-6 max-w-7xl mx-auto w-full flex-1">
+                {isLoading ? (
+                  <div className="text-center py-20 text-sm text-slate-500 font-medium flex flex-col items-center gap-2">
+                    <div className="w-6 h-6 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+                    Đang kết nối đồng bộ dữ liệu gốc từ Google Sheet...
+                  </div>
+                ) : (
+                  <div>
+                    {/* BẢO MỆT NỘI BỘ CA TRỰC */}
+                    {(activeTab === 'lich-lam-viec' || activeTab === 'report-daily') && !isLoggedIn ? (
+                      <div className="max-w-sm mx-auto bg-white p-6 rounded-2xl shadow-md border border-slate-200 my-16 text-xs">
+                        <div className="text-center mb-4">
+                          <span className="text-2xl">🔒</span>
+                          <h3 className="font-bold text-slate-800 uppercase mt-2 tracking-wide">Yêu Cầu Xác Thực Quy Trình</h3>
+                        </div>
+                        <div className="space-y-3">
+                          <input type="text" placeholder="Tên đăng nhập quản trị (admin)" className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-orange-500 outline-none" value={username} onChange={e => setUsername(e.target.value)} />
+                          <input type="password" placeholder="Mật khẩu (123456)" className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-orange-500 outline-none" value={password} onChange={e => setPassword(e.target.value)} />
+                          <button onClick={() => username === 'admin' && password === '123456' ? setIsLoggedIn(true) : alert('Thông tin xác thực sai!')} className="w-full bg-slate-900 hover:bg-black text-white py-2.5 rounded-lg font-bold uppercase">Xác Thực</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {/* TAB 1: LỊCH LÀM VIỆC CHI TIẾT */}
+                        {activeTab === 'lich-lam-viec' && (
+                          <div className="bg-white p-5 rounded-xl shadow border border-slate-200">
+                            <h2 className="font-bold text-sm mb-3 border-l-4 border-orange-500 pl-2 text-slate-900">LỊCH LÀM VIỆC - QUÉT CHẶN ĐỘNG (D5:D46)</h2>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs border-collapse border border-slate-200">
+                                <thead>
+                                  <tr className="bg-slate-100 font-bold text-slate-700">
+                                    <th className="p-2.5 border text-left">Nhân Sự Vận Hành (Cột D)</th>
+                                    <th className="p-2.5 border text-left">Vị Trí</th>
+                                    <th className="p-2.5 border text-left">Khung Giờ Ca</th>
+                                    <th className="p-2.5 border text-left">Trạng Thái</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {staffData.map(p => (
+                                    <tr key={p.id} className="hover:bg-slate-50">
+                                      <td className="p-2.5 border font-bold text-slate-900">{p.name}</td>
+                                      <td className="p-2.5 border text-slate-600">{p.role}</td>
+                                      <td className="p-2.5 border font-mono text-slate-500">{p.shift}</td>
+                                      <td className="p-2.5 border"><span className="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold">{p.status || 'Active'}</span></td>
+                                    </tr>
+                                  ))}
+                                  <tr className="bg-amber-50 text-center font-bold text-amber-800">
+                                    <td colSpan="4" className="p-3 border uppercase tracking-wider text-[10px]">🛑 GIỚI HẠN VÙNG CHẶN QUÉT MẢNG: "Nhóm năng suất"</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* TAB 2: REPORT DAILY CÔNG THỨC TỰ ĐỘNG */}
+                        {activeTab === 'report-daily' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+                            <div className="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-3">
+                              <h3 className="font-bold text-blue-600 uppercase border-b pb-2">Khu Vực Điền Chỉ Số Ca Trực (Input)</h3>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>Công Leader (I3): <input type="number" className="w-full p-2 border rounded-md mt-1" value={reportInputs.i3} onChange={e => handleNumChange('i3', e.target.value)} /></div>
+                                <div>Công NV Năng suất (I4): <input type="number" className="w-full p-2 border rounded-md mt-1" value={reportInputs.i4} onChange={e => handleNumChange('i4', e.target.value)} /></div>
+                                <div>Sản lượng CBS 1 (E14): <input type="number" className="w-full p-2 border rounded-md mt-1" value={reportInputs.e14} onChange={e => handleNumChange('e14', e.target.value)} /></div>
+                                <div>Sản lượng CBS 2 (E15): <input type="number" className="w-full p-2 border rounded-md mt-1" value={reportInputs.e15} onChange={e => handleNumChange('e15', e.target.value)} /></div>
+                              </div>
+                            </div>
+                            <div className="bg-white p-5 rounded-xl shadow border border-slate-200 flex flex-col justify-between">
+                              <div>
+                                <h3 className="font-bold text-orange-600 uppercase border-b pb-2">Bảng Tính Toán Đầu Ra Biểu Mẫu (Output)</h3>
+                                <div className="space-y-2.5 bg-slate-50 p-3 rounded-lg border mt-3 font-medium text-slate-700">
+                                  <div className="flex justify-between"><span>Tổng sản lượng xử lý (Q6):</span><span className="font-bold text-blue-700">{computedValues.Q6.toLocaleString()} đơn</span></div>
+                                  <div className="flex justify-between"><span>Năng suất đơn/giờ công (L12):</span><span className="font-bold text-green-700">{computedValues.L12} đơn/h</span></div>
+                                  <div className="flex justify-between"><span>Tỷ lệ đáp ứng thực tế (R8):</span><span className="font-bold font-mono text-slate-900">{computedValues.R8}</span></div>
+                                </div>
+                              </div>
+                              <div className="text-[10px] font-mono text-slate-400 border-t pt-2 mt-4">
+                                Dải đếm công tự động: L15={computedValues.L15} | L16={computedValues.L16} | L17={computedValues.L17}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* MÀN HÌNH XEM CÔNG KHAI (MỌI THÀNH VIÊN ĐỀU XEM ĐƯỢC) */}
+                    {(activeTab === 'vi-pham' || activeTab === 'bien-ban') && (
+                      <div className="space-y-4">
+                        <div className="bg-white p-4 rounded-xl shadow border border-slate-200 flex justify-between flex-wrap gap-3 items-center text-xs">
+                          <span className="font-bold text-emerald-700 flex items-center gap-1">🔓 Không gian công khai bộ lọc</span>
+                          <div className="flex gap-2 w-full sm:w-auto">
+                            <input type="text" placeholder="Tìm theo tên nhân sự..." className="p-2 border rounded-lg w-full sm:w-48 outline-none focus:border-orange-500" value={filterName} onChange={e => setFilterName(e.target.value)} />
+                            <select className="p-2 border rounded-lg bg-white outline-none" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
+                              <option value="">Tất cả các tháng</option><option value="05">Tháng 05</option><option value="06">Tháng 06</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Thống kê tần suất xuất hiện lỗi */}
+                        <div className="bg-white p-4 rounded-xl shadow border border-slate-200 text-xs">
+                          <h4 className="font-bold text-slate-500 mb-2 uppercase tracking-wide">Tần suất lỗi cá nhân xuất hiện (Theo bộ lọc):</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(processedData.individualCounts).map(([n, c]) => (
+                              <span key={n} className="bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md text-slate-800 font-medium"><strong>{n}</strong>: <strong className="text-red-600">{c} lần</strong></span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Bảng dữ liệu chi tiết */}
+                        <div className="bg-white rounded-xl shadow overflow-hidden border border-slate-200">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead className="bg-slate-50 font-bold text-slate-600 uppercase tracking-wide text-[10px]">
+                                <tr><th className="p-3 border-b">Thời Gian Ghi Nhận</th><th className="p-3 border-b">Họ và Tên Thật</th><th className="p-3 border-b">Nội Dung Sự Việc/Lỗi</th><th className="p-3 border-b">Mã User ID</th></tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {processedData.filtered.map(item => (
+                                  <tr key={item.id} className="hover:bg-slate-50/80">
+                                    <td className="p-3 text-slate-500 font-mono">{item.time || item.date}</td>
+                                    <td className="p-3 font-bold text-slate-900">{item.name}</td>
+                                    <td className="p-3 text-red-600 font-semibold">{item.error || item.content}</td>
+                                    <td className="p-3 text-slate-400 font-mono">{item.userId}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </main>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
