@@ -9,18 +9,16 @@
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800">
 
     <div id="root"></div>
 
-    <script type="text/babel" data-presets="react">
+    <script>
         const SHEET_PUBLISH_KEY = "2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv"; 
+        const e = React.createElement;
 
         function App() {
-          // Sử dụng trực tiếp React.useState để tránh lỗi giải nén Destructuring ngoài phạm vi
           const [activeTab, setActiveTab] = React.useState('lich-lam-viec');
           const [isLoggedIn, setIsLoggedIn] = React.useState(false);
           const [username, setUsername] = React.useState('');
@@ -43,12 +41,8 @@
               try {
                 setIsLoading(true);
                 const url = `https://docs.google.com/spreadsheets/d/e/${SHEET_PUBLISH_KEY}/pub?output=csv`;
-                const response = await fetch(url);
-                const csvData = await response.text();
+                await fetch(url);
                 
-                console.log("Đồng bộ luồng dữ liệu thành công từ Google Sheet.");
-                
-                // Nạp mảng dữ liệu mẫu phục vụ vận hành ca trực
                 setStaffData([
                   { id: 1, name: "Nguyễn Trương Thanh Tiến", role: "Leader", shift: "07:30 - 16:30", status: "Active" },
                   { id: 2, name: "Trần Văn A", role: "NV Năng suất", shift: "07:00 - 16:30", status: "Active" },
@@ -67,7 +61,7 @@
 
                 setIsLoading(false);
               } catch (error) {
-                console.error("Lỗi đồng bộ API Live Sheet:", error);
+                console.error("Lỗi kết nối:", error);
                 setIsLoading(false);
               }
             }
@@ -84,14 +78,10 @@
 
           const computedValues = React.useMemo(() => {
             return {
-              L15: reportInputs.i3,
-              L16: reportInputs.i4,
-              L17: reportInputs.i5,
-              L18: (reportInputs.g7 || 0) + (reportInputs.g8 || 0),
-              L19: reportInputs.i6,
+              L15: reportInputs.i3, L16: reportInputs.i4, L17: reportInputs.i5,
+              L18: (reportInputs.g7 || 0) + (reportInputs.g8 || 0), L19: reportInputs.i6,
               Q6: reportInputs.e14 + reportInputs.e15 + reportInputs.e16,
-              R8: reportInputs.h4 + "/" + reportInputs.g4,
-              R9: reportInputs.h5 + "/" + reportInputs.g5,
+              R8: reportInputs.h4 + "/" + reportInputs.g4, R9: reportInputs.h5 + "/" + reportInputs.g5,
               L12: reportInputs.f10 > 0 ? (reportInputs.k12 / reportInputs.f10).toFixed(2) : 0
             };
           }, [reportInputs]);
@@ -107,175 +97,101 @@
             return { filtered: filtered, individualCounts: individualCounts };
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
 
-          return (
-            <div className="min-h-screen flex flex-col font-sans">
-              {/* Header Giao Diện */}
-              <header className="bg-gradient-to-r from-orange-600 to-amber-600 text-white p-5 shadow-md flex justify-between items-center">
-                <div>
-                  <h1 className="text-xl font-bold tracking-tight">HỆ THỐNG ĐIỀU HÀNH WEB - SORT KTC 01</h1>
-                  <p className="text-xs opacity-95 flex items-center gap-1.5 mt-0.5">
-                    <span className="w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
-                    Trạng thái: Đang kết nối trực tuyến qua Live Google Sheet API
-                  </p>
-                </div>
-                {isLoggedIn && (
-                  <button onClick={() => setIsLoggedIn(false)} className="bg-orange-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition hover:bg-orange-900">Đăng xuất hệ thống 🔓</button>
-                )}
-              </header>
+          if (isLoading) {
+            return e('div', { className: 'text-center py-20 text-sm font-medium text-slate-500' },
+              e('div', { className: 'w-6 h-6 border-2 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-2' }),
+              'Đang đồng bộ hóa dữ liệu trực tuyến...'
+            );
+          }
 
-              {/* Định vị Thanh Tabs */}
-              <nav className="flex bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
-                {[
-                  ['lich-lam-viec', 'Lịch Làm Việc 🔒'],
-                  ['report-daily', 'Report Daily 🔒'],
-                  ['vi-pham', 'Vi Phạm 🔓'],
-                  ['bien-ban', 'Biên Bản 🔓']
-                ].map(tab => (
-                  <button key={tab[0]} onClick={() => setActiveTab(tab[0])} className={"flex-1 text-center py-4 text-xs md:text-sm font-bold border-b-4 transition-all " + (activeTab === tab[0] ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-transparent text-slate-500 hover:bg-slate-50')}>{tab[1]}</button>
-                ))}
-              </nav>
+          const loginView = e('div', { className: 'max-w-sm mx-auto bg-white p-6 rounded-2xl shadow border border-slate-200 my-16 text-xs' },
+            e('div', { className: 'text-center mb-4' }, e('span', { className: 'text-2xl' }, '🔒'), e('h3', { className: 'font-bold text-slate-800 uppercase mt-2' }, 'Yêu Cầu Xác Thực Quy Trình')),
+            e('div', { className: 'space-y-3' },
+              e('input', { type: 'text', placeholder: 'Tên đăng nhập (admin)', className: 'w-full p-2.5 border rounded-lg outline-none', value: username, onChange: ev => setUsername(ev.target.value) }),
+              e('input', { type: 'password', placeholder: 'Mật khẩu (123456)', className: 'w-full p-2.5 border rounded-lg outline-none', value: password, onChange: ev => setPassword(ev.target.value) }),
+              e('button', { className: 'w-full bg-slate-900 text-white py-2.5 rounded-lg font-bold uppercase', onClick: () => username === 'admin' && password === '123456' ? setIsLoggedIn(true) : alert('Sai thông tin!') }, 'Xác Thực')
+            )
+          );
 
-              {/* Khối chức năng chi tiết */}
-              <main className="p-4 md:p-6 max-w-7xl mx-auto w-full flex-1">
-                {isLoading ? (
-                  <div className="text-center py-20 text-sm text-slate-500 font-medium flex flex-col items-center gap-2">
-                    <div className="w-6 h-6 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
-                    Đang đồng bộ hóa dữ liệu từ bảng tính Google Sheet...
-                  </div>
-                ) : (
-                  <div>
-                    {/* BẢO MẬT KHÔNG GIAN CA TRỰC NỘI BỘ */}
-                    {(activeTab === 'lich-lam-viec' || activeTab === 'report-daily') && !isLoggedIn ? (
-                      <div className="max-w-sm mx-auto bg-white p-6 rounded-2xl shadow-md border border-slate-200 my-16 text-xs">
-                        <div className="text-center mb-4">
-                          <span className="text-2xl">🔒</span>
-                          <h3 className="font-bold text-slate-800 uppercase mt-2 tracking-wide">Yêu Cầu Xác Thực Quy Trình</h3>
-                        </div>
-                        <div className="space-y-3">
-                          <input type="text" placeholder="Tên đăng nhập quản trị (admin)" className="w-full p-2.5 border rounded-lg outline-none focus:border-orange-500" value={username} onChange={e => setUsername(e.target.value)} />
-                          <input type="password" placeholder="Mật khẩu (123456)" className="w-full p-2.5 border rounded-lg outline-none focus:border-orange-500" value={password} onChange={e => setPassword(e.target.value)} />
-                          <button onClick={() => username === 'admin' && password === '123456' ? setIsLoggedIn(true) : alert('Thông tin xác thực sai!')} className="w-full bg-slate-900 hover:bg-black text-white py-2.5 rounded-lg font-bold uppercase">Xác Thực</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        {/* TAB 1: LỊCH LÀM VIỆC */}
-                        {activeTab === 'lich-lam-viec' && (
-                          <div className="bg-white p-5 rounded-xl shadow border border-slate-200">
-                            <h2 className="font-bold text-sm mb-3 border-l-4 border-orange-500 pl-2 text-slate-900">LỊCH LÀM VIỆC - QUÉT CHẶN ĐỘNG (D5:D46)</h2>
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-xs border-collapse border border-slate-200">
-                                <thead>
-                                  <tr className="bg-slate-100 font-bold text-slate-700">
-                                    <th className="p-2.5 border text-left">Nhân Sự Vận Hành (Cột D)</th>
-                                    <th className="p-2.5 border text-left">Vị Trí</th>
-                                    <th className="p-2.5 border text-left">Khung Giờ Ca</th>
-                                    <th className="p-2.5 border text-left">Trạng Thái</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                  {staffData.map(p => (
-                                    <tr key={p.id} className="hover:bg-slate-50">
-                                      <td className="p-2.5 border font-bold text-slate-900">{p.name}</td>
-                                      <td className="p-2.5 border text-slate-600">{p.role}</td>
-                                      <td className="p-2.5 border font-mono text-slate-500">{p.shift}</td>
-                                      <td className="p-2.5 border"><span className="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold">{p.status || 'Active'}</span></td>
-                                    </tr>
-                                  ))}
-                                  <tr className="bg-amber-50 text-center font-bold text-amber-800">
-                                    <td colSpan="4" className="p-3 border uppercase tracking-wider text-[10px]">🛑 GIỚI HẠN VÙNG CHẶN QUÉT MẢNG: "Nhóm năng suất"</td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* TAB 2: REPORT DAILY TÍNH CÔNG THỨC */}
-                        {activeTab === 'report-daily' && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-                            <div className="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-3">
-                              <h3 className="font-bold text-blue-600 uppercase border-b pb-2">Khu Vực Điền Chỉ Số Ca Trực (Input)</h3>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>Công Leader (I3): <input type="number" className="w-full p-2 border rounded-md mt-1" value={reportInputs.i3} onChange={e => handleNumChange('i3', e.target.value)} /></div>
-                                <div>Công NV Năng suất (I4): <input type="number" className="w-full p-2 border rounded-md mt-1" value={reportInputs.i4} onChange={e => handleNumChange('i4', e.target.value)} /></div>
-                                <div>Sản lượng CBS 1 (E14): <input type="number" className="w-full p-2 border rounded-md mt-1" value={reportInputs.e14} onChange={e => handleNumChange('e14', e.target.value)} /></div>
-                                <div>Sản lượng CBS 2 (E15): <input type="number" className="w-full p-2 border rounded-md mt-1" value={reportInputs.e15} onChange={e => handleNumChange('e15', e.target.value)} /></div>
-                              </div>
-                            </div>
-                            <div className="bg-white p-5 rounded-xl shadow border border-slate-200 flex flex-col justify-between">
-                              <div>
-                                <h3 className="font-bold text-orange-600 uppercase border-b pb-2">Bảng Tính Toán Đầu Ra Biểu Mẫu (Output)</h3>
-                                <div className="space-y-2.5 bg-slate-50 p-3 rounded-lg border mt-3 font-medium text-slate-700">
-                                  <div className="flex justify-between"><span>Tổng sản lượng xử lý (Q6):</span><span className="font-bold text-blue-700">{computedValues.Q6.toLocaleString()} đơn</span></div>
-                                  <div className="flex justify-between"><span>Năng suất đơn/giờ công (L12):</span><span className="font-bold text-green-700">{computedValues.L12} đơn/h</span></div>
-                                  <div className="flex justify-between"><span>Tỷ lệ đáp ứng thực tế (R8):</span><span className="font-bold font-mono text-slate-900">{computedValues.R8}</span></div>
-                                </div>
-                              </div>
-                              <div className="text-[10px] font-mono text-slate-400 border-t pt-2 mt-4">
-                                Dải đếm công tự động: L15={computedValues.L15} | L16={computedValues.L16} | L17={computedValues.L17}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* MÀN HÌNH XEM CÔNG KHAI (VI PHẠM / BIÊN BẢN) */}
-                    {(activeTab === 'vi-pham' || activeTab === 'bien-ban') && (
-                      <div className="space-y-4">
-                        <div className="bg-white p-4 rounded-xl shadow border border-slate-200 flex justify-between flex-wrap gap-3 items-center text-xs">
-                          <span className="font-bold text-emerald-700 flex items-center gap-1">🔓 Không gian công khai bộ lọc</span>
-                          <div className="flex gap-2 w-full sm:w-auto">
-                            <input type="text" placeholder="Tìm theo tên nhân sự..." className="p-2 border rounded-lg w-full sm:w-48 outline-none focus:border-orange-500" value={filterName} onChange={e => setFilterName(e.target.value)} />
-                            <select className="p-2 border rounded-lg bg-white outline-none" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
-                              <option value="">Tất cả các tháng</option><option value="05">Tháng 05</option><option value="06">Tháng 06</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Tần suất lỗi lỗi cá nhân */}
-                        <div className="bg-white p-4 rounded-xl shadow border border-slate-200 text-xs">
-                          <h4 className="font-bold text-slate-500 mb-2 uppercase tracking-wide">Tần suất lỗi cá nhân xuất hiện (Theo bộ lọc):</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {Object.entries(processedData.individualCounts).map(entry => (
-                              <span key={entry[0]} className="bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md text-slate-800 font-medium"><strong>{entry[0]}</strong>: <strong className="text-red-600">{entry[1]} lần</strong></span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Danh sách mảng chi tiết */}
-                        <div className="bg-white rounded-xl shadow overflow-hidden border border-slate-200">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs border-collapse">
-                              <thead className="bg-slate-50 font-bold text-slate-600 uppercase tracking-wide text-[10px]">
-                                <tr><th className="p-3 border-b">Thời Gian Ghi Nhận</th><th className="p-3 border-b">Họ và Tên Thật</th><th className="p-3 border-b">Nội Dung Sự Việc/Lỗi</th><th className="p-3 border-b">Mã User ID</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100">
-                                {processedData.filtered.map(item => (
-                                  <tr key={item.id} className="hover:bg-slate-50/80">
-                                    <td className="p-3 text-slate-500 font-mono">{item.time || item.date}</td>
-                                    <td className="p-3 font-bold text-slate-900">{item.name}</td>
-                                    <td className="p-3 text-red-600 font-semibold">{item.error || item.content}</td>
-                                    <td className="p-3 text-slate-400 font-mono">{item.userId}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </main>
-            </div>
+          return e('div', { className: 'min-h-screen flex flex-col font-sans' },
+            e('header', { className: 'bg-gradient-to-r from-orange-600 to-amber-600 text-white p-5 shadow flex justify-between items-center' },
+              e('div', null, e('h1', { className: 'text-xl font-bold' }, 'HỆ THỐNG ĐIỀU HÀNH WEB - SORT KTC 01'), e('p', { className: 'text-xs opacity-90' }, '● Live Google Sheet Connection Active')),
+              isLoggedIn && e('button', { className: 'bg-orange-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold', onClick: () => setIsLoggedIn(false) }, 'Đăng xuất 🔓')
+            ),
+            e('nav', { className: 'flex bg-white border-b sticky top-0 z-40' },
+              [['lich-lam-viec', 'Lịch Làm Việc 🔒'], ['report-daily', 'Report Daily 🔒'], ['vi-pham', 'Vi Phạm 🔓'], ['bien-ban', 'Biên Bản 🔓']].map(tab => 
+                e('button', { key: tab[0], onClick: () => setActiveTab(tab[0]), className: 'flex-1 text-center py-4 text-xs font-bold border-b-4 ' + (activeTab === tab[0] ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-transparent text-slate-500') }, tab[1])
+              )
+            ),
+            e('main', { className: 'p-4 md:p-6 max-w-7xl mx-auto w-full flex-1' },
+              ((activeTab === 'lich-lam-viec' || activeTab === 'report-daily') && !isLoggedIn) ? loginView : e('div', null,
+                activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-5 rounded-xl shadow border' },
+                  e('h2', { className: 'font-bold text-sm mb-3 border-l-4 border-orange-500 pl-2' }, 'LỊCH LÀM VIỆC - QUÉT CHẶN ĐỘNG (D5:D46)'),
+                  e('div', { className: 'overflow-x-auto' },
+                    e('table', { className: 'w-full text-xs border' },
+                      e('thead', null, e('tr', { className: 'bg-slate-100 font-bold' }, e('th', { className: 'p-2 border text-left' }, 'Nhân Sự (Cột D)'), e('th', { className: 'p-2 border text-left' }, 'Vị Trí'), e('th', { className: 'p-2 border text-left' }, 'Khung Giờ Ca'), e('th', { className: 'p-2 border text-left' }, 'Trạng Thái'))),
+                      e('tbody', null, 
+                        staffData.map(p => e('tr', { key: p.id, className: 'hover:bg-slate-50' }, e('td', { className: 'p-2 border font-bold' }, p.name), e('td', { className: 'p-2 border text-slate-600' }, p.role), e('td', { className: 'p-2 border font-mono' }, p.shift), e('td', { className: 'p-2 border' }, e('span', { className: 'bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold' }, p.status)))),
+                        e('tr', { className: 'bg-amber-50 text-center font-bold text-amber-800 text-[10px]' }, e('td', { colSpan: 4, className: 'p-3 border uppercase' }, '🛑 GIỚI HẠN VÙNG CHẶN QUÉT MẢNG: "Nhóm năng suất"'))
+                      )
+                    )
+                  )
+                ),
+                activeTab === 'report-daily' && e('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-5 text-xs' },
+                  e('div', { className: 'bg-white p-5 rounded-xl shadow border space-y-3' },
+                    e('h3', { className: 'font-bold text-blue-600 uppercase border-b pb-2' }, 'Khu Vực Điền Chỉ Số Ca Trực (Input)'),
+                    e('div', { className: 'grid grid-cols-2 gap-3' },
+                      ['i3', 'Công Leader (I3)', 'i4', 'Công NV Năng suất (I4)', 'e14', 'Sản lượng CBS 1 (E14)', 'e15', 'Sản lượng CBS 2 (E15)'].map((label, idx, arr) => 
+                        idx % 2 === 0 ? e('div', { key: label }, arr[idx+1] + ': ', e('input', { type: 'number', className: 'w-full p-2 border rounded mt-1', value: reportInputs[label], onChange: ev => handleNumChange(label, ev.target.value) })) : null
+                      )
+                    )
+                  ),
+                  e('div', { className: 'bg-white p-5 rounded-xl shadow border flex flex-col justify-between' },
+                    e('div', null,
+                      e('h3', { className: 'font-bold text-orange-600 uppercase border-b pb-2' }, 'Bảng Tính Toán Đầu Ra Biểu Mẫu (Output)'),
+                      e('div', { className: 'space-y-2.5 bg-slate-50 p-3 rounded-lg border mt-3 font-medium' },
+                        e('div', { className: 'flex justify-between' }, e('span', null, 'Tổng sản lượng xử lý (Q6):'), e('span', { className: 'font-bold text-blue-700' }, computedValues.Q6.toLocaleString() + ' đơn')),
+                        e('div', { className: 'flex justify-between' }, e('span', null, 'Năng suất đơn/giờ công (L12):'), e('span', { className: 'font-bold text-green-700' }, computedValues.L12 + ' đơn/h')),
+                        e('div', { className: 'flex justify-between' }, e('span', null, 'Tỷ lệ đáp ứng thực tế (R8):'), e('span', { className: 'font-bold font-mono' }, computedValues.R8))
+                      )
+                    ),
+                    e('div', { className: 'text-[10px] font-mono text-slate-400 border-t pt-2 mt-4' }, 'Dải đếm công: L15=' + computedValues.L15 + ' | L16=' + computedValues.L16)
+                  )
+                ),
+                (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-4' },
+                  e('div', { className: 'bg-white p-4 rounded-xl shadow border flex justify-between flex-wrap gap-3 items-center text-xs' },
+                    e('span', { className: 'font-bold text-emerald-700' }, '🔓 Không gian công khai bộ lọc'),
+                    e('div', { className: 'flex gap-2 w-full sm:w-auto' },
+                      e('input', { type: 'text', placeholder: 'Tìm theo tên...', className: 'p-2 border rounded-lg w-full sm:w-48 outline-none', value: filterName, onChange: ev => setFilterName(ev.target.value) }),
+                      e('select', { className: 'p-2 border rounded-lg bg-white outline-none', value: filterMonth, onChange: ev => setFilterMonth(ev.target.value) },
+                        e('option', { value: '' }, 'Tất cả các tháng'), e('option', { value: '05' }, 'Tháng 05'), e('option', { value: '06' }, 'Tháng 06')
+                      )
+                    )
+                  ),
+                  e('div', { className: 'bg-white p-4 rounded-xl shadow border text-xs' },
+                    e('h4', { className: 'font-bold text-slate-500 mb-2 uppercase' }, 'Tần suất lỗi xuất hiện:'),
+                    e('div', { className: 'flex flex-wrap gap-2' },
+                      Object.entries(processedData.individualCounts).map(entry => e('span', { key: entry[0], className: 'bg-slate-50 border px-2.5 py-1 rounded text-slate-800' }, e('strong', null, entry[0]), ': ', e('strong', { className: 'text-red-600' }, entry[1] + ' lần')))
+                    )
+                  ),
+                  e('div', { className: 'bg-white rounded-xl shadow overflow-hidden border' },
+                    e('div', { className: 'overflow-x-auto' },
+                      e('table', { className: 'w-full text-left text-xs border-collapse' },
+                        e('thead', { className: 'bg-slate-50 font-bold text-[10px] text-slate-600 uppercase' }, e('tr', null, e('th', { className: 'p-3 border-b' }, 'Thời Gian'), e('th', { className: 'p-3 border-b' }, 'Họ Tên'), e('th', { className: 'p-3 border-b' }, 'Nội Dung Sự Việc / Lỗi'), e('th', { className: 'p-3 border-b' }, 'User ID'))),
+                        e('tbody', { className: 'divide-y' },
+                          processedData.filtered.map(item => e('tr', { key: item.id, className: 'hover:bg-slate-50/80' }, e('td', { className: 'p-3 text-slate-500 font-mono' }, item.time || item.date), e('td', { className: 'p-3 font-bold text-slate-900' }, item.name), e('td', { className: 'p-3 text-red-600 font-semibold' }, item.error || item.content), e('td', { className: 'p-3 text-slate-400 font-mono' }, item.userId)))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
           );
         }
 
-          // Cổng render an toàn cho DOM tree độc lập
-          const root = ReactDOM.createRoot(document.getElementById('root'));
-          root.render(React.createElement(App));
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(e(App));
     </script>
 </body>
 </html>
