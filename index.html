@@ -336,8 +336,8 @@
                             { name: 'Giờ ra', w: 'w-[40px]' },
                             { name: 'Vị trí', w: 'w-[130px]' },
                             { name: 'Giờ Công', w: 'w-[45px]' },
-                            { name: 'Tổng Nhân Sự', w: 'w-[75px]' }, // Tăng kích thước lên 1 dòng gọn gàng
-                            { name: 'Số Kế Hoạch', w: 'w-[75px]' },  // Tăng kích thước lên 1 dòng gọn gàng
+                            { name: 'Tổng Nhân Sự', w: 'w-[75px]' }, 
+                            { name: 'Số Kế Hoạch', w: 'w-[75px]' },  
                             { name: 'Số Đáp Ứng', w: 'w-[55px]' },
                             { name: 'Giờ Công Thực Tế', w: 'w-[50px]' },
                             { name: 'Bù-Trừ', w: 'w-[45px]' },
@@ -377,26 +377,25 @@
                           idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-black bg-slate-50/50' }, computed.dapt_thieu + '%')
                         )),
                         
-                        // Dòng Tổng Cộng: Bố trí sạch sẽ, loại bỏ các ô tỷ lệ thừa không cần thiết ngoài rìa
                         e('tr', { className: 'font-black border-t-2 border-slate-300 text-red-600 bg-white text-center' },
                           e('td', { colSpan: 4, className: 'border p-1 text-center' }, 'Tổng cộng'), e('td', { className: 'border text-center' }),
                           e('td', { className: 'border text-center' }, computed.total_tns), e('td', { className: 'border text-center' }, computed.total_skh), e('td', { className: 'border text-center' }, computed.total_sdung),
                           e('td', { className: 'border font-mono text-center' }, computed.formatGctt(computed.total_gctt)), e('td', { className: 'border text-center' }, '0'), e('td', { className: 'border text-center' }), 
-                          e('td', { className: 'border text-center text-red-600' }, '0%'), // Khớp với cột Tỉ Lệ tổng trong hình
+                          e('td', { className: 'border text-center text-red-600' }, '0%'), 
                           e('td', { className: 'border text-red-600 font-bold text-center' }, computed.dapt_dat + '%'), 
                           e('td', { className: 'border text-red-600 font-bold text-center' }, computed.dapt_thieu + '%')
                         ),
 
+                        // Đã xóa 2 tỉ lệ thừa (Đạt/Thiếu) ở dòng Tổng giờ công Sort theo yêu cầu
                         e('tr', { className: 'font-black text-red-600 border-t border-slate-200 bg-white text-center' },
                           e('td', { colSpan: 4, className: 'border p-1 text-center' }, 'Tổng giờ công Sort'),
                           e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }),
                           e('td', { colSpan: 3, className: 'border font-mono text-center text-xs' }, computed.formatGctt(computed.total_gctt)),
-                          e('td', { className: 'border text-center' }), // Ô trống cân cột tỉ lệ
-                          e('td', { className: 'border font-bold text-center text-red-600 bg-slate-50' }, computed.dapt_dat + '%'),
-                          e('td', { className: 'border font-bold text-center text-red-600 bg-slate-50' }, computed.dapt_thieu + '%')
+                          e('td', { className: 'border text-center' }), 
+                          e('td', { className: 'border text-center bg-slate-50' }), // Trống
+                          e('td', { className: 'border text-center bg-slate-50' })  // Trống
                         ),
 
-                        // Cấu trúc 3 cột cuối căn kích thước chia đều bằng nhau (w-[80px])
                         e('tr', { className: 'font-bold border-t border-slate-200 text-black text-[9px] bg-slate-50 text-center' },
                           e('td', { colSpan: 4, className: 'border p-0.5 text-center' }),
                           e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }),
