@@ -12,6 +12,7 @@
         .auto-height {
             overflow: hidden;
             height: auto;
+            resize: none;
         }
     </style>
 </head>
@@ -193,11 +194,11 @@
 
             const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
             
-            // NĂNG SUẤT ĐIỂM DANH (Tính dựa trên thực tế xử lý Act)
-            const nang_suat_diem_danh = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
+            // ĐẢO NGƯỢC: NĂNG SUẤT ĐIỂM DANH (Tính dựa trên kế hoạch Forecast)
+            const nang_suat_diem_danh = total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0;
 
-            // NĂNG SUẤT BÁO CÁO (Tính dựa trên kế hoạch Forecast)
-            const nang_suat_bao_cao = total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0;
+            // ĐẢO NGƯỢC: HIỆU SUẤT BÁO CÁO NHANH (Tính dựa trên thực tế xử lý Act)
+            const nang_suat_bao_cao = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
 
             const dapt_dat = tile_tong >= 100 ? 100 : tile_tong;
             const dapt_thieu = tile_tong >= 100 ? 0 : (100 - tile_tong);
@@ -258,11 +259,24 @@
             return { filtered };
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
 
-          // Hàm tự động co giãn dòng theo chữ nhập vào cho textarea vị trí và ghi chú
+          // Hàm tự kích hoạt tăng chiều cao khi có dữ liệu thay đổi hoặc nhập vào
           const autoResize = (ev) => {
-            ev.target.style.height = 'auto';
-            ev.target.style.height = ev.target.scrollHeight + 'px';
+            const target = ev.target;
+            target.style.height = 'auto';
+            target.style.height = target.scrollHeight + 'px';
           };
+
+          // Hook phụ trợ để tự động giãn chiều cao toàn bộ ô khi ứng dụng render lần đầu
+          React.useEffect(() => {
+            if (activeTab === 'report-daily') {
+              setTimeout(() => {
+                document.querySelectorAll('.auto-height').forEach(el => {
+                  el.style.height = 'auto';
+                  el.style.height = el.scrollHeight + 'px';
+                });
+              }, 100);
+            }
+          }, [activeTab, inputs]);
 
           if (isLoading) {
             return e('div', { className: 'flex flex-col items-center justify-center min-h-screen font-bold text-slate-500' },
@@ -274,7 +288,7 @@
           return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
             e('header', { className: 'bg-slate-900 text-white p-2 flex justify-between items-center shadow-md' },
               e('h1', { className: 'text-xs font-black tracking-widest text-orange-500' }, 'SORT KTC 01 OPERATIONAL WEB'),
-              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400' }, 'Màn hình tối ưu gọn | Tách biệt hai cách tính năng suất')
+              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400' }, 'Màn hình tối ưu gọn | Chia đều 3 cột cuối')
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-600 text-center text-xs' },
               [['lich-lam-viec', 'Bảng Lịch Toàn Tuần 📅'], ['report-daily', 'Report Daily & Tự Tính 📊'], ['vi-pham', 'Vi Phạm 🔓'], ['bien-ban', 'Biên Bản 🔓']].map(tab => 
@@ -333,7 +347,7 @@
                             { name: 'Số Đáp Ứng', w: 'w-[40px]' },
                             { name: 'Giờ Công Thực Tế', w: 'w-[40px]' },
                             { name: 'Bù-Trừ', w: 'w-[35px]' },
-                            { name: 'Ghi Chú', w: 'w-auto' },
+                            { name: 'Ghi Chú', w: 'w-[120px]' }, // Giảm kích thước cột Ghi chú lại
                             { name: 'Tỉ Lệ', w: 'w-[40px]' },
                             { name: 'Đáp Ứng Đạt', w: 'w-[40px]' },
                             { name: 'Đáp Ứng Thiếu', w: 'w-[40px]' }
@@ -353,8 +367,8 @@
                           e('td', { className: 'border p-0 text-center' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
                           e('td', { className: 'border p-0 text-center' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
                           
-                          // Vị trí: Hiển thị tràn dòng rõ nội dung, tự tăng chiều cao, không cắt bớt chữ
-                          e('td', { className: 'border p-1 text-center align-middle w-[130px]' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full text-center bg-transparent font-bold text-black text-[10px] focus:bg-white block break-words whitespace-normal focus:outline-none leading-tight overflow-hidden resize-none', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
+                          // Vị trí: Tự tăng chiều cao khi chữ nhiều, xuống dòng hiện hết chữ
+                          e('td', { className: 'border p-1 text-center align-middle w-[130px]' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full text-center bg-transparent font-bold text-black text-[10px] focus:bg-white block break-words whitespace-normal focus:outline-none leading-tight' }, inputs[row.vt])),
                           
                           e('td', { className: 'border font-bold text-black font-mono text-center' }, row.gc.toFixed(1).replace('.', ',')),
                           e('td', { className: 'border p-0 text-center' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
@@ -363,8 +377,8 @@
                           e('td', { className: 'border font-mono font-bold text-black bg-slate-50/50 text-center' }, computed.formatGctt(row.gctt)),
                           e('td', { className: 'border text-slate-400 text-center' }, '0'),
                           
-                          // Ghi chú: Hiển thị tràn dòng rõ nội dung, không cắt bớt chữ
-                          e('td', { className: 'border p-1 text-center align-middle' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full p-0.5 bg-transparent text-[10px] text-black text-center focus:bg-white focus:outline-none block break-words whitespace-normal leading-tight overflow-hidden resize-none', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
+                          // Ghi chú: Giảm kích thước, tự động xuống dòng và tăng chiều cao theo chữ
+                          e('td', { className: 'border p-1 text-center align-middle w-[120px]' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full p-0.5 bg-transparent text-[10px] text-black text-center focus:bg-white focus:outline-none block break-words whitespace-normal leading-tight' }, inputs[row.note])),
                           
                           e('td', { className: 'border font-bold text-black text-center' }, row.tl + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-black bg-slate-50/50' }, computed.dapt_dat + '%'),
@@ -386,22 +400,23 @@
                           e('td', { className: 'border font-bold text-center text-red-600' }, computed.dapt_thieu + '%')
                         ),
 
+                        // Khung 3 cột cuối căn kích thước chia đều bằng nhau (w-[80px])
                         e('tr', { className: 'font-bold border-t border-slate-200 text-black text-[9px] bg-slate-50 text-center' },
                           e('td', { colSpan: 4, className: 'border p-0.5 text-center' }),
                           e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }),
-                          e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800' }, 'Day'), 
-                          e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800' }, 'Act xử lý ca'), 
-                          e('td', { className: 'border p-0.5 text-center font-black bg-yellow-500 text-white' }, 'NS Điểm Danh'),
+                          e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800 w-[80px]' }, 'Day'), 
+                          e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800 w-[80px]' }, 'FC'), 
+                          e('td', { className: 'border p-0.5 text-center font-black bg-yellow-500 text-white w-[80px]' }, 'NS Điểm Danh'),
                           e('td', { colSpan: 3, className: 'border p-0.5 text-center' })
                         ),
 
                         e('tr', { className: 'font-bold border-t border-slate-200 text-black font-mono bg-white text-center' },
                           e('td', { colSpan: 4, className: 'border p-0.5 text-center' }),
                           e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }),
-                          e('td', { className: 'border text-center text-red-600 font-bold text-[10px]' }, todayStr),
-                          e('td', { className: 'border text-center text-slate-700 text-[10px]' }, computed.act_don.toLocaleString()),
-                          // Năng suất điểm danh = Act / Giờ công thực tế
-                          e('td', { className: 'border text-center text-red-600 font-black text-xs bg-yellow-100' }, computed.nang_suat_diem_danh),
+                          e('td', { className: 'border text-center text-red-600 font-bold text-[10px] w-[80px]' }, todayStr),
+                          e('td', { className: 'border text-center text-slate-700 text-[10px] w-[80px]' }, inputs.forecast.toLocaleString()),
+                          // ĐẢO NGƯỢC: Năng suất điểm danh ở đây tính dựa theo kế hoạch Forecast
+                          e('td', { className: 'border text-center text-red-600 font-black text-xs bg-yellow-100 w-[80px]' }, computed.nang_suat_diem_danh),
                           e('td', { colSpan: 3, className: 'border p-0.5 text-center' })
                         )
                       )
@@ -422,8 +437,9 @@
                       e('span', { className: 'text-slate-600' }, '⚡ Tổng hàng Act = CBS1 + CBS2 + Tròn lần:'),
                       e('span', { className: 'text-emerald-700 font-mono font-black text-xs' }, computed.act_don.toLocaleString())
                     ),
+                    // ĐẢO NGƯỢC: Hiệu suất báo cáo nhanh cuối cùng tính theo Act / Tổng công
                     e('div', { className: 'flex justify-between items-center font-black pt-0.5 text-slate-700' }, 
-                      e('span', null, 'Hiệu suất báo cáo nhanh (Forecast / Tổng công):'), 
+                      e('span', null, 'Hiệu suất báo cáo nhanh (Act xử lý / Tổng công):'), 
                       e('span', { className: 'text-red-600 font-mono text-xs' }, computed.nang_suat_bao_cao + ' đơn/h')
                     )
                   ),
@@ -472,7 +488,7 @@
 
                 e('div', { className: 'bg-white rounded border shadow p-2 space-y-1.5' },
                   e('div', { className: 'flex justify-between items-center' },
-                    e('span', { className: 'font-black text-slate-800 text-[10px] uppercase bg-yellow-400 px-1.5 py-0.5 rounded' }, '📋 KHUNG BÁO CÁO BÁO CÁO CUỐI CA (TÍNH THEO FORECAST)'),
+                    e('span', { className: 'font-black text-slate-800 text-[10px] uppercase bg-yellow-400 px-1.5 py-0.5 rounded' }, '📋 KHUNG BÁO CÁO BÁO CÁO CUỐI CA (TÍNH THEO ACT XỬ LÝ)'),
                     e('button', { className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-0.5 rounded text-[10px]', onClick: () => copyToClipboard(computed.reportText, 'Đã sao chép nội dung báo cáo thành công!') }, 'Copy Text Báo Cáo 📑')
                   ),
                   e('textarea', { className: 'w-full h-44 font-mono p-1.5 border rounded bg-slate-900 text-emerald-400 text-[11px] leading-relaxed focus:outline-none', readOnly: true, value: computed.reportText })
