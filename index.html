@@ -7,6 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <style>
+        /* Tự động tăng chiều cao theo nội dung cho textarea */
+        .auto-height {
+            overflow: hidden;
+            height: auto;
+        }
+    </style>
 </head>
 <body class="bg-slate-100 text-slate-800 text-[11px]">
 
@@ -186,7 +193,11 @@
 
             const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
             
-            const nang_suat_o = total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0;
+            // NĂNG SUẤT ĐIỂM DANH (Tính dựa trên thực tế xử lý Act)
+            const nang_suat_diem_danh = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
+
+            // NĂNG SUẤT BÁO CÁO (Tính dựa trên kế hoạch Forecast)
+            const nang_suat_bao_cao = total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0;
 
             const dapt_dat = tile_tong >= 100 ? 100 : tile_tong;
             const dapt_thieu = tile_tong >= 100 ? 0 : (100 - tile_tong);
@@ -201,7 +212,7 @@
                                `b. Nhân viên giờ công:${tile_gcong}% ${i.sdung_gcong}/${i.skh_gcong}\n` +
                                `c. Freelancer:${tile_fl}% ${total_fl_sdung}/${total_fl_skh}\n` +
                                `Tổng đáp ứng nhân sự:${tile_tong}%\n\n` +
-                               `3/ Năng suất:${nang_suat_o}đơn/h\n\n` +
+                               `3/ Năng suất:${nang_suat_bao_cao}đơn/h\n\n` +
                                `4/ Hàng hóa:\n` +
                                `Data ghi nhận :${todayStr} 16:30:00\n` +
                                `a. Hàng nhận chờ rã (đơn):${i.hang_cho_ra}đơn\n` +
@@ -225,7 +236,7 @@
               gc_leader, gc_nsuat, gc_gcong, gc_thuviec, gc_fl_had, gc_fl_viec,
               gctt_leader, gctt_nsuat, gctt_gcong, gctt_thuviec, gctt_fl_had, gctt_fl_viec,
               tile_leader, tile_nsuat, tile_gcong, tile_thuviec, tile_fl_had, tile_fl_viec,
-              total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, nang_suat_o, reportText,
+              total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, nang_suat_diem_danh, nang_suat_bao_cao, reportText,
               formatGctt, allHoursText, dapt_dat, dapt_thieu
             };
           }, [inputs, todayStr]);
@@ -247,6 +258,12 @@
             return { filtered };
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
 
+          // Hàm tự động co giãn dòng theo chữ nhập vào cho textarea vị trí và ghi chú
+          const autoResize = (ev) => {
+            ev.target.style.height = 'auto';
+            ev.target.style.height = ev.target.scrollHeight + 'px';
+          };
+
           if (isLoading) {
             return e('div', { className: 'flex flex-col items-center justify-center min-h-screen font-bold text-slate-500' },
               e('div', { className: 'w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-2' }),
@@ -257,7 +274,7 @@
           return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
             e('header', { className: 'bg-slate-900 text-white p-2 flex justify-between items-center shadow-md' },
               e('h1', { className: 'text-xs font-black tracking-widest text-orange-500' }, 'SORT KTC 01 OPERATIONAL WEB'),
-              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400' }, 'Màn hình tối ưu gọn | Tự tính NS theo Act')
+              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400' }, 'Màn hình tối ưu gọn | Tách biệt hai cách tính năng suất')
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-600 text-center text-xs' },
               [['lich-lam-viec', 'Bảng Lịch Toàn Tuần 📅'], ['report-daily', 'Report Daily & Tự Tính 📊'], ['vi-pham', 'Vi Phạm 🔓'], ['bien-ban', 'Biên Bản 🔓']].map(tab => 
@@ -265,7 +282,7 @@
               )
             ),
 
-            e('main', { className: 'p-2 w-full max-w-[100vw] mx-auto flex-1 overflow-hidden' },
+            e('main', { className: 'p-2 w-full max-w-[100vw] mx-auto flex-1' },
               
               activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-3 rounded border shadow-sm space-y-2' },
                 e('div', { className: 'flex justify-between items-center border-b pb-1' },
@@ -296,88 +313,97 @@
               ),
 
               activeTab === 'report-daily' && e('div', { className: 'space-y-2' },
-                e('div', { className: 'bg-white rounded border shadow w-full overflow-hidden' },
-                  e('table', { className: 'w-full border-collapse text-center text-[10px] bg-white text-black table-fixed' },
-                    e('thead', null, 
-                      e('tr', { className: 'bg-orange-500 text-white text-center' }, 
-                        e('th', { colSpan: 11, className: 'p-1.5 text-xs font-black tracking-widest uppercase text-center' }, 'ĐIỂM DANH SORT KTC 01'),
-                        e('th', { colSpan: 3, className: 'p-1.5 text-xs font-black border-l border-orange-400 font-mono tracking-wider text-center' }, todayStr)
+                e('div', { className: 'bg-white rounded border shadow w-full' },
+                  e('div', { className: 'overflow-x-auto w-full' },
+                    e('table', { className: 'w-full border-collapse text-center text-[10px] bg-white text-black min-w-[900px]' },
+                      e('thead', null, 
+                        e('tr', { className: 'bg-orange-500 text-white text-center' }, 
+                          e('th', { colSpan: 11, className: 'p-1.5 text-xs font-black tracking-widest uppercase text-center' }, 'ĐIỂM DANH SORT KTC 01'),
+                          e('th', { colSpan: 3, className: 'p-1.5 text-xs font-black border-l border-orange-400 font-mono tracking-wider text-center' }, todayStr)
+                        ),
+                        e('tr', { className: 'bg-orange-500 text-white font-bold border-t border-orange-400 text-[9px] leading-tight text-center' }, 
+                          [
+                            { name: 'Ca làm việc', w: 'w-[65px]' },
+                            { name: 'Giờ vào', w: 'w-[40px]' },
+                            { name: 'Giờ ra', w: 'w-[40px]' },
+                            { name: 'Vị trí', w: 'w-[130px]' },
+                            { name: 'Giờ Công', w: 'w-[45px]' },
+                            { name: 'Tổng Nhân Sự', w: 'w-[30px]' },
+                            { name: 'Số Kế Hoạch', w: 'w-[30px]' },
+                            { name: 'Số Đáp Ứng', w: 'w-[40px]' },
+                            { name: 'Giờ Công Thực Tế', w: 'w-[40px]' },
+                            { name: 'Bù-Trừ', w: 'w-[35px]' },
+                            { name: 'Ghi Chú', w: 'w-auto' },
+                            { name: 'Tỉ Lệ', w: 'w-[40px]' },
+                            { name: 'Đáp Ứng Đạt', w: 'w-[40px]' },
+                            { name: 'Đáp Ứng Thiếu', w: 'w-[40px]' }
+                          ].map((h, i) => e('th', { key: i, className: `p-1 border border-orange-400 text-center ${h.w}` }, h.name))
+                        )
                       ),
-                      e('tr', { className: 'bg-orange-500 text-white font-bold border-t border-orange-400 text-[9px] leading-tight text-center' }, 
+                      e('tbody', { className: 'font-medium bg-white text-black text-center' },
                         [
-                          { name: 'Ca làm việc', w: 'w-[65px]' },
-                          { name: 'Giờ vào', w: 'w-[40px]' },
-                          { name: 'Giờ ra', w: 'w-[40px]' },
-                          { name: 'Vị trí', w: 'w-[130px]' },
-                          { name: 'Giờ Công', w: 'w-[45px]' },
-                          { name: 'Tổng Nhân Sự', w: 'w-[30px]' },
-                          { name: 'Số Kế Hoạch', w: 'w-[30px]' },
-                          { name: 'Số Đáp Ứng', w: 'w-[40px]' },
-                          { name: 'Giờ Công Thực Tế', w: 'w-[40px]' },
-                          { name: 'Bù-Trừ', w: 'w-[35px]' },
-                          { name: 'Ghi Chú', w: 'w-auto' },
-                          { name: 'Tỉ Lệ', w: 'w-[40px]' },
-                          { name: 'Đáp Ứng Đạt', w: 'w-[40px]' },
-                          { name: 'Đáp Ứng Thiếu', w: 'w-[40px]' }
-                        ].map((h, i) => e('th', { key: i, className: `p-1 border border-orange-400 text-center flex-wrap ${h.w}` }, h.name))
-                      )
-                    ),
-                    e('tbody', { className: 'font-medium bg-white text-black text-center' },
-                      [
-                        { id: 'leader', vt: 'vt_leader', v: 'v_leader', r: 'r_leader', tns: 'tns_leader', skh: 'skh_leader', sd: 'sdung_leader', note: 'note_leader', gc: computed.gc_leader, gctt: computed.gctt_leader, tl: computed.tile_leader },
-                        { id: 'nsuat', vt: 'vt_nsuat', v: 'v_nsuat', r: 'r_nsuat', tns: 'tns_nsuat', skh: 'skh_nsuat', sd: 'sdung_nsuat', note: 'note_nsuat', gc: computed.gc_nsuat, gctt: computed.gctt_nsuat, tl: computed.tile_nsuat },
-                        { id: 'gcong', vt: 'vt_gcong', v: 'v_gcong', r: 'r_gcong', tns: 'tns_gcong', skh: 'skh_gcong', sd: 'sdung_gcong', note: 'note_gcong', gc: computed.gc_gcong, gctt: computed.gctt_gcong, tl: computed.tile_gcong },
-                        { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
-                        { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
-                        { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_viec }
-                      ].map((row, idx) => e('tr', { key: row.id, className: 'hover:bg-slate-50 border-t border-slate-200 text-center' },
-                        idx === 0 && e('td', { rowSpan: 6, className: 'border p-1 font-bold text-center text-[10px] truncate' }, '07:00-16:00'),
-                        e('td', { className: 'border p-0 text-center' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
-                        e('td', { className: 'border p-0 text-center' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
-                        e('td', { className: 'border p-0 text-center align-middle' }, e('textarea', { rows: 1, className: 'w-full text-center p-0.5 bg-transparent font-bold text-black text-[10px] focus:bg-white resize-none block break-words whitespace-normal focus:outline-none leading-tight', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
-                        e('td', { className: 'border font-bold text-black font-mono text-center' }, row.gc.toFixed(1).replace('.', ',')),
-                        e('td', { className: 'border p-0 text-center' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
-                        e('td', { className: 'border p-0 text-center' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 bg-transparent text-black focus:bg-white', value: inputs[row.skh], onChange: ev => handleInputChange('skh_' + row.id, ev.target.value, true) })),
-                        e('td', { className: 'border p-0 text-center' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 bg-transparent font-black text-black focus:bg-white', value: inputs[row.sd], onChange: ev => handleInputChange(row.sd, ev.target.value, true) })),
-                        e('td', { className: 'border font-mono font-bold text-black bg-slate-50/50 text-center' }, computed.formatGctt(row.gctt)),
-                        e('td', { className: 'border text-slate-400 text-center' }, '0'),
-                        e('td', { className: 'border p-0 text-center align-middle' }, e('textarea', { rows: 1, className: 'w-full p-0.5 bg-transparent text-[10px] text-black text-center focus:bg-white focus:outline-none resize-none block break-words whitespace-normal leading-tight', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
-                        e('td', { className: 'border font-bold text-black text-center' }, row.tl + '%'),
-                        idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-black bg-slate-50/50' }, computed.dapt_dat + '%'),
-                        idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-black bg-slate-50/50' }, computed.dapt_thieu + '%')
-                      )),
-                      
-                      e('tr', { className: 'font-black border-t-2 border-slate-300 text-red-600 bg-white text-center' },
-                        e('td', { colSpan: 4, className: 'border p-1 text-center' }, 'Tổng cộng'), e('td', { className: 'border text-center' }),
-                        e('td', { className: 'border text-center' }, computed.total_tns), e('td', { className: 'border text-center' }, computed.total_skh), e('td', { className: 'border text-center' }, computed.total_sdung),
-                        e('td', { className: 'border font-mono text-center' }, computed.formatGctt(computed.total_gctt)), e('td', { className: 'border text-center' }, '0'), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }),
-                        e('td', { className: 'border text-red-600 font-bold text-center' }, computed.dapt_dat + '%'), e('td', { className: 'border text-red-600 font-bold text-center' }, computed.dapt_thieu + '%')
-                      ),
+                          { id: 'leader', vt: 'vt_leader', v: 'v_leader', r: 'r_leader', tns: 'tns_leader', skh: 'skh_leader', sd: 'sdung_leader', note: 'note_leader', gc: computed.gc_leader, gctt: computed.gctt_leader, tl: computed.tile_leader },
+                          { id: 'nsuat', vt: 'vt_nsuat', v: 'v_nsuat', r: 'r_nsuat', tns: 'tns_nsuat', skh: 'skh_nsuat', sd: 'sdung_nsuat', note: 'note_nsuat', gc: computed.gc_nsuat, gctt: computed.gctt_nsuat, tl: computed.tile_nsuat },
+                          { id: 'gcong', vt: 'vt_gcong', v: 'v_gcong', r: 'r_gcong', tns: 'tns_gcong', skh: 'skh_gcong', sd: 'sdung_gcong', note: 'note_gcong', gc: computed.gc_gcong, gctt: computed.gctt_gcong, tl: computed.tile_gcong },
+                          { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
+                          { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
+                          { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_viec }
+                        ].map((row, idx) => e('tr', { key: row.id, className: 'hover:bg-slate-50 border-t border-slate-200 text-center' },
+                          idx === 0 && e('td', { rowSpan: 6, className: 'border p-1 font-bold text-center text-[10px]' }, '07:00-16:00'),
+                          e('td', { className: 'border p-0 text-center' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
+                          e('td', { className: 'border p-0 text-center' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
+                          
+                          // Vị trí: Hiển thị tràn dòng rõ nội dung, tự tăng chiều cao, không cắt bớt chữ
+                          e('td', { className: 'border p-1 text-center align-middle w-[130px]' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full text-center bg-transparent font-bold text-black text-[10px] focus:bg-white block break-words whitespace-normal focus:outline-none leading-tight overflow-hidden resize-none', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
+                          
+                          e('td', { className: 'border font-bold text-black font-mono text-center' }, row.gc.toFixed(1).replace('.', ',')),
+                          e('td', { className: 'border p-0 text-center' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 bg-transparent font-bold text-black focus:bg-white', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
+                          e('td', { className: 'border p-0 text-center' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 bg-transparent text-black focus:bg-white', value: inputs[row.skh], onChange: ev => handleInputChange('skh_' + row.id, ev.target.value, true) })),
+                          e('td', { className: 'border p-0 text-center' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 bg-transparent font-black text-black focus:bg-white', value: inputs[row.sd], onChange: ev => handleInputChange(row.sd, ev.target.value, true) })),
+                          e('td', { className: 'border font-mono font-bold text-black bg-slate-50/50 text-center' }, computed.formatGctt(row.gctt)),
+                          e('td', { className: 'border text-slate-400 text-center' }, '0'),
+                          
+                          // Ghi chú: Hiển thị tràn dòng rõ nội dung, không cắt bớt chữ
+                          e('td', { className: 'border p-1 text-center align-middle' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full p-0.5 bg-transparent text-[10px] text-black text-center focus:bg-white focus:outline-none block break-words whitespace-normal leading-tight overflow-hidden resize-none', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
+                          
+                          e('td', { className: 'border font-bold text-black text-center' }, row.tl + '%'),
+                          idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-black bg-slate-50/50' }, computed.dapt_dat + '%'),
+                          idx === 0 && e('td', { rowSpan: 6, className: 'border font-bold text-center text-black bg-slate-50/50' }, computed.dapt_thieu + '%')
+                        )),
+                        
+                        e('tr', { className: 'font-black border-t-2 border-slate-300 text-red-600 bg-white text-center' },
+                          e('td', { colSpan: 4, className: 'border p-1 text-center' }, 'Tổng cộng'), e('td', { className: 'border text-center' }),
+                          e('td', { className: 'border text-center' }, computed.total_tns), e('td', { className: 'border text-center' }, computed.total_skh), e('td', { className: 'border text-center' }, computed.total_sdung),
+                          e('td', { className: 'border font-mono text-center' }, computed.formatGctt(computed.total_gctt)), e('td', { className: 'border text-center' }, '0'), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }),
+                          e('td', { className: 'border text-red-600 font-bold text-center' }, computed.dapt_dat + '%'), e('td', { className: 'border text-red-600 font-bold text-center' }, computed.dapt_thieu + '%')
+                        ),
 
-                      e('tr', { className: 'font-black text-red-600 border-t border-slate-200 bg-white text-center' },
-                        e('td', { colSpan: 4, className: 'border p-1 text-center' }, 'Tổng giờ công Sort'),
-                        e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }),
-                        e('td', { colSpan: 3, className: 'border font-mono text-center text-xs' }, computed.formatGctt(computed.total_gctt)),
-                        e('td', { className: 'border font-bold text-center text-red-600' }, computed.dapt_dat + '%'),
-                        e('td', { className: 'border font-bold text-center text-red-600' }, computed.dapt_thieu + '%')
-                      ),
+                        e('tr', { className: 'font-black text-red-600 border-t border-slate-200 bg-white text-center' },
+                          e('td', { colSpan: 4, className: 'border p-1 text-center' }, 'Tổng giờ công Sort'),
+                          e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }),
+                          e('td', { colSpan: 3, className: 'border font-mono text-center text-xs' }, computed.formatGctt(computed.total_gctt)),
+                          e('td', { className: 'border font-bold text-center text-red-600' }, computed.dapt_dat + '%'),
+                          e('td', { className: 'border font-bold text-center text-red-600' }, computed.dapt_thieu + '%')
+                        ),
 
-                      e('tr', { className: 'font-bold border-t border-slate-200 text-black text-[9px] bg-slate-50 text-center' },
-                        e('td', { colSpan: 4, className: 'border p-0.5 text-center' }),
-                        e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }),
-                        e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800' }, 'Day'), 
-                        e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800' }, 'FC'), 
-                        e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800' }, 'Năng suất'),
-                        e('td', { colSpan: 3, className: 'border p-0.5 text-center' })
-                      ),
+                        e('tr', { className: 'font-bold border-t border-slate-200 text-black text-[9px] bg-slate-50 text-center' },
+                          e('td', { colSpan: 4, className: 'border p-0.5 text-center' }),
+                          e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }),
+                          e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800' }, 'Day'), 
+                          e('td', { className: 'border p-0.5 text-center font-black bg-orange-100 text-orange-800' }, 'Act xử lý ca'), 
+                          e('td', { className: 'border p-0.5 text-center font-black bg-yellow-500 text-white' }, 'NS Điểm Danh'),
+                          e('td', { colSpan: 3, className: 'border p-0.5 text-center' })
+                        ),
 
-                      e('tr', { className: 'font-bold border-t border-slate-200 text-black font-mono bg-white text-center' },
-                        e('td', { colSpan: 4, className: 'border p-0.5 text-center' }),
-                        e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }),
-                        e('td', { className: 'border text-center text-red-600 font-bold text-[10px]' }, todayStr),
-                        e('td', { className: 'border text-center text-slate-700 text-[10px]' }, inputs.forecast.toLocaleString()),
-                        e('td', { className: 'border text-center text-red-600 font-black text-xs bg-yellow-100' }, computed.nang_suat_o),
-                        e('td', { colSpan: 3, className: 'border p-0.5 text-center' })
+                        e('tr', { className: 'font-bold border-t border-slate-200 text-black font-mono bg-white text-center' },
+                          e('td', { colSpan: 4, className: 'border p-0.5 text-center' }),
+                          e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }), e('td', { className: 'border p-0.5 text-center' }),
+                          e('td', { className: 'border text-center text-red-600 font-bold text-[10px]' }, todayStr),
+                          e('td', { className: 'border text-center text-slate-700 text-[10px]' }, computed.act_don.toLocaleString()),
+                          // Năng suất điểm danh = Act / Giờ công thực tế
+                          e('td', { className: 'border text-center text-red-600 font-black text-xs bg-yellow-100' }, computed.nang_suat_diem_danh),
+                          e('td', { colSpan: 3, className: 'border p-0.5 text-center' })
+                        )
                       )
                     )
                   )
@@ -390,13 +416,16 @@
                       e('div', null, e('label', { className: 'block text-slate-500 mb-0.5' }, 'Số Feeder CBS 1:'), e('input', { type: 'number', className: 'w-full p-1 border rounded font-mono font-bold bg-slate-50 text-xs text-center', value: inputs.feeder_cbs1, onChange: ev => handleInputChange('feeder_cbs1', ev.target.value, true) })),
                       e('div', null, e('label', { className: 'block text-slate-500 mb-0.5' }, 'Số Feeder CBS 2:'), e('input', { type: 'number', className: 'w-full p-1 border rounded font-mono font-bold bg-slate-50 text-xs text-center', value: inputs.feeder_cbs2, onChange: ev => handleInputChange('feeder_cbs2', ev.target.value, true) })),
                       e('div', null, e('label', { className: 'block text-slate-500 mb-0.5' }, 'Tròn lần:'), e('input', { type: 'number', className: 'w-full p-1 border rounded font-mono font-bold bg-slate-50 text-xs text-center', value: inputs.tron_lan, onChange: ev => handleInputChange('tron_lan', ev.target.value, true) })),
-                      e('div', null, e('label', { className: 'block text-slate-500 mb-0.5' }, 'Forecast (đơn):'), e('input', { type: 'number', className: 'w-full p-1 border rounded font-mono bg-slate-50 text-xs text-center', value: inputs.forecast, onChange: ev => handleInputChange('forecast', ev.target.value, true) }))
+                      e('div', null, e('label', { className: 'block text-slate-500 mb-0.5' }, 'Forecast báo cáo:'), e('input', { type: 'number', className: 'w-full p-1 border rounded font-mono bg-slate-50 text-xs text-center', value: inputs.forecast, onChange: ev => handleInputChange('forecast', ev.target.value, true) }))
                     ),
                     e('div', { className: 'bg-slate-50 p-1.5 rounded border border-dashed flex justify-between items-center font-bold' },
-                      e('span', { className: 'text-slate-600' }, '⚡ Act (đơn) = CBS1 + CBS2 + Tròn lần:'),
+                      e('span', { className: 'text-slate-600' }, '⚡ Tổng hàng Act = CBS1 + CBS2 + Tròn lần:'),
                       e('span', { className: 'text-emerald-700 font-mono font-black text-xs' }, computed.act_don.toLocaleString())
                     ),
-                    e('div', { className: 'flex justify-between items-center font-black pt-0.5' }, e('span', null, 'Hiệu suất Năng suất đơn/h (Forecast / Tổng giờ công):'), e('span', { className: 'text-red-600 font-mono text-xs' }, computed.nang_suat_o + ' đơn/h'))
+                    e('div', { className: 'flex justify-between items-center font-black pt-0.5 text-slate-700' }, 
+                      e('span', null, 'Hiệu suất báo cáo nhanh (Forecast / Tổng công):'), 
+                      e('span', { className: 'text-red-600 font-mono text-xs' }, computed.nang_suat_bao_cao + ' đơn/h')
+                    )
                   ),
                   
                   e('div', { className: 'bg-amber-400 border border-amber-500 rounded overflow-hidden shadow-sm flex flex-col' },
@@ -443,7 +472,7 @@
 
                 e('div', { className: 'bg-white rounded border shadow p-2 space-y-1.5' },
                   e('div', { className: 'flex justify-between items-center' },
-                    e('span', { className: 'font-black text-slate-800 text-[10px] uppercase bg-yellow-400 px-1.5 py-0.5 rounded' }, '📋 KHUNG BÁO CÁO NHANH'),
+                    e('span', { className: 'font-black text-slate-800 text-[10px] uppercase bg-yellow-400 px-1.5 py-0.5 rounded' }, '📋 KHUNG BÁO CÁO BÁO CÁO CUỐI CA (TÍNH THEO FORECAST)'),
                     e('button', { className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-0.5 rounded text-[10px]', onClick: () => copyToClipboard(computed.reportText, 'Đã sao chép nội dung báo cáo thành công!') }, 'Copy Text Báo Cáo 📑')
                   ),
                   e('textarea', { className: 'w-full h-44 font-mono p-1.5 border rounded bg-slate-900 text-emerald-400 text-[11px] leading-relaxed focus:outline-none', readOnly: true, value: computed.reportText })
