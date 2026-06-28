@@ -12,7 +12,7 @@
             overflow: hidden;
             height: auto;
             resize: none;
-        }
+          }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 text-[11px]">
@@ -199,6 +199,8 @@
             const dapt_dat = tile_tong >= 100 ? 100 : tile_tong;
             const dapt_thieu = tile_tong >= 100 ? 0 : (100 - tile_tong);
 
+            const formatGctt = (val) => val.toFixed(1).replace('.', ',');
+
             const reportText = `${todayStr}\n` +
                                `Báo cáo cuối ca Sort (07:30-16:30) KTC HCM 01\n\n` +
                                `1/ Lượng hàng.\n` +
@@ -220,21 +222,19 @@
                                `5/ Phát sinh trong ca:\n` +
                                `- ${i.phat_sinh}`;
 
-            const formatGctt = (val) => val.toFixed(1).replace('.', ',');
-
-            const allHoursText = `Công Leader: ${gctt_leader.toFixed(1)}\n` +
-                                 `Công NV (Năng suất): ${gctt_nsuat.toFixed(1)}\n` +
-                                 `Công CTV (Giờ công): ${gctt_gcong.toFixed(1)}\n` +
-                                 `Công FL: ${(gctt_fl_had + gctt_fl_viec).toFixed(1)}\n` +
-                                 `Nhân viên thử việc: ${gctt_thuviec.toFixed(1)}\n` +
-                                 `Tổng cộng giờ công: ${total_gctt.toFixed(1)}`;
+            // Chỉ copy chuỗi danh sách các số phân tách bằng dòng mới
+            const allHoursNumbersOnly = `${gctt_leader.toFixed(1).replace('.', ',')}\n` +
+                                        `${gctt_nsuat.toFixed(1).replace('.', ',')}\n` +
+                                        `${gctt_gcong.toFixed(1).replace('.', ',')}\n` +
+                                        `${(gctt_fl_had + gctt_fl_viec).toFixed(1).replace('.', ',')}\n` +
+                                        `${gctt_thuviec.toFixed(1).replace('.', ',')}`;
 
             return {
               gc_leader, gc_nsuat, gc_gcong, gc_thuviec, gc_fl_had, gc_fl_viec,
               gctt_leader, gctt_nsuat, gctt_gcong, gctt_thuviec, gctt_fl_had, gctt_fl_viec,
               tile_leader, tile_nsuat, tile_gcong, tile_thuviec, tile_fl_had, tile_fl_viec,
               total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, nang_suat_diem_danh, nang_suat_bao_cao, reportText,
-              formatGctt, allHoursText, dapt_dat, dapt_thieu
+              formatGctt, allHoursNumbersOnly, dapt_dat, dapt_thieu
             };
           }, [inputs, todayStr]);
 
@@ -282,7 +282,7 @@
           return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
             e('header', { className: 'bg-slate-900 text-white p-2 flex justify-between items-center shadow-md' },
               e('h1', { className: 'text-xs font-black tracking-widest text-orange-500' }, 'SORT KTC 01 OPERATIONAL WEB'),
-              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400' }, 'Bản cập nhật tiêu chuẩn tối ưu dòng cột')
+              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400' }, 'Bản cập nhật tối ưu - Chỉ copy số công')
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-600 text-center text-xs' },
               [['lich-lam-viec', 'Bảng Lịch Toàn Tuần 📅'], ['report-daily', 'Report Daily & Tự Tính 📊'], ['vi-pham', 'Vi Phạm 🔓'], ['bien-ban', 'Biên Bản 🔓']].map(tab => 
@@ -386,14 +386,13 @@
                           e('td', { className: 'border text-red-600 font-bold text-center' }, computed.dapt_thieu + '%')
                         ),
 
-                        // Đã xóa 2 tỉ lệ thừa (Đạt/Thiếu) ở dòng Tổng giờ công Sort theo yêu cầu
                         e('tr', { className: 'font-black text-red-600 border-t border-slate-200 bg-white text-center' },
                           e('td', { colSpan: 4, className: 'border p-1 text-center' }, 'Tổng giờ công Sort'),
                           e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }), e('td', { className: 'border text-center' }),
                           e('td', { colSpan: 3, className: 'border font-mono text-center text-xs' }, computed.formatGctt(computed.total_gctt)),
                           e('td', { className: 'border text-center' }), 
-                          e('td', { className: 'border text-center bg-slate-50' }), // Trống
-                          e('td', { className: 'border text-center bg-slate-50' })  // Trống
+                          e('td', { className: 'border text-center bg-slate-50' }), 
+                          e('td', { className: 'border text-center bg-slate-50' })  
                         ),
 
                         e('tr', { className: 'font-bold border-t border-slate-200 text-black text-[9px] bg-slate-50 text-center' },
@@ -442,25 +441,25 @@
                       e('span', null, 'Khối dữ liệu Điền Report'),
                       e('button', { 
                         className: 'bg-slate-900 text-white text-[9px] px-2 py-0.5 rounded font-bold hover:bg-slate-800 shadow',
-                        onClick: () => copyToClipboard(computed.allHoursText, 'Đã copy toàn bộ các dòng giờ công!')
-                      }, '📋 Copy Tất Cả Giờ Công')
+                        onClick: () => copyToClipboard(computed.allHoursNumbersOnly, 'Đã copy dãy số công (không có tiêu đề)!')
+                      }, '📋 Copy Chỉ Cột Số')
                     ),
                     e('div', { className: 'p-2 space-y-1 font-bold text-slate-900 divide-y divide-amber-300 flex-1 flex flex-col justify-center' },
                       [
-                        { label: 'Công Leader', val: computed.gctt_leader.toFixed(1) }, 
-                        { label: 'Công NV (Năng suất)', val: computed.gctt_nsuat.toFixed(1) }, 
-                        { label: 'Công CTV (Giờ công)', val: computed.gctt_gcong.toFixed(1) }, 
-                        { label: 'Công FL', val: (computed.gctt_fl_had + computed.gctt_fl_viec).toFixed(1) }, 
-                        { label: 'Nhân viên thử việc', val: computed.gctt_thuviec.toFixed(1) }, 
-                        { label: 'Tổng ca trực công', val: computed.total_gctt.toFixed(1) }
+                        { label: 'Công Leader', val: computed.gctt_leader.toFixed(1).replace('.', ',') }, 
+                        { label: 'Công NV (Năng suất)', val: computed.gctt_nsuat.toFixed(1).replace('.', ',') }, 
+                        { label: 'Công CTV (Giờ công)', val: computed.gctt_gcong.toFixed(1).replace('.', ',') }, 
+                        { label: 'Công FL', val: (computed.gctt_fl_had + computed.gctt_fl_viec).toFixed(1).replace('.', ',') }, 
+                        { label: 'Nhân viên thử việc', val: computed.gctt_thuviec.toFixed(1).replace('.', ',') }, 
+                        { label: 'Tổng ca trực công', val: computed.total_gctt.toFixed(1).replace('.', ',') }
                       ].map((item, id) => 
                         e('div', { key: id, className: 'flex justify-between items-center pt-1' }, 
                           e('span', null, item.label), 
                           e('div', { className: 'flex items-center gap-1' },
                             e('span', { className: 'font-mono' }, item.val),
-                            id < 4 && e('button', { 
+                            e('button', { 
                               className: 'bg-slate-900 text-amber-400 text-[9px] px-1 py-0.2 rounded font-bold hover:bg-slate-800',
-                              onClick: () => copyToClipboard(item.val, `Đã copy ${item.label}`)
+                              onClick: () => copyToClipboard(item.val, `Đã copy số: ${item.val}`)
                             }, 'C')
                           )
                         )
