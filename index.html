@@ -169,7 +169,7 @@
             alert(message);
           };
 
-          // Lấy danh sách các tháng thực sự có dữ liệu của tab hiện tại
+          // Lấy danh sách các tháng thực sự có dữ liệu cho tab Vi Phạm và Biên Bản
           const activeMonthsWithData = React.useMemo(() => {
             const src = activeTab === 'vi-pham' ? violationData : bienbanData;
             const months = new Set();
@@ -563,7 +563,7 @@
                       e('option', { value: '' }, 'Tất cả tháng có dữ liệu'),
                       activeMonthsWithData.map(m => e('option', { key: m, value: m }, `Tháng ${m}`))
                     ),
-                    e('input', { type: 'text', placeholder: 'Tìm kiếm nhân viên...', className: 'p-1.5 border border-slate-200 rounded text-xs w-44 text-center focus:outline-none focus:bg-white transition', value: filterName, onChange: ev => setFilterName(ev.target.value) })
+                    e('input', { type: 'text', placeholder: 'Tìm kiếm nhân viên...', className: 'p-1.5 border border-slate-200 rounded text-xs w-44 text-center focus:outline-none focus:bg-white transition', value: filterName, onChange: ev => filterNameChange => setFilterName(ev.target.value) || setFilterName(ev.target.value) })
                   )
                 ),
 
