@@ -306,7 +306,7 @@
               activeTab === 'report-daily' && e('div', { className: 'space-y-3' },
                 e('div', { className: 'bg-white rounded-lg shadow-sm overflow-hidden p-1' },
                   e('div', { className: 'overflow-x-auto' },
-                    e('table', { className: 'excel-table w-full border-collapse text-center text-[13px] font-bold bg-white text-black min-w-[1150px]' },
+                    e('table', { className: 'excel-table w-full border-collapse text-center text-[13px] font-bold bg-white text-black min-w-[1200px]' },
                       e('thead', null, 
                         e('tr', { className: 'bg-[#ff7300] text-white text-base font-bold' }, 
                           e('th', { colSpan: 11, className: 'p-2 text-center text-white font-bold tracking-wider text-lg' }, 'ĐIỂM DANH SORT KTC 01'),
@@ -314,15 +314,21 @@
                         ),
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold' }, 
                           [
-                            { name: 'Ca làm việc', w: 'w-[90px]' }, { name: 'Giờ vào', w: 'w-[65px]' }, { name: 'Giờ ra', w: 'w-[65px]' }, 
-                            { name: 'Vị trí', w: 'w-[220px]' }, 
-                            { name: 'Giờ Công', w: 'w-[70px]' }, { name: 'Tổng Nhân Sự', w: 'w-[85px]' }, { name: 'Số Kế Hoạch', w: 'w-[85px]' }, { name: 'Số Đáp Ứng', w: 'w-[85px]' },
-                            { name: 'Giờ Công Thực Tế', w: 'w-[115px]' }, 
-                            { name: 'Thời Gian\nBù - Trừ', w: 'w-[85px]', isBreak: true }, // Chỉ duy nhất cột này ngắt dòng
-                            { name: 'Ghi Chú', w: 'w-[300px]' }, 
-                            { name: 'Tỉ Lệ', w: 'w-[60px]' },
-                            { name: 'Đáp Ứng Đạt', w: 'w-[80px]' }, { name: 'Đáp Ứng Thiếu', w: 'w-[80px]' }
-                          ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w} ${!h.isBreak ? 'whitespace-nowrap' : ''}` }, h.isBreak ? e('div', { className: 'leading-tight font-bold text-center' }, 'Thời Gian', e('br'), 'Bù - Trừ') : h.name))
+                            { name: 'Ca làm việc', w: 'w-[95px]', isStrict: true }, 
+                            { name: 'Giờ vào', w: 'w-[65px]', isStrict: true }, 
+                            { name: 'Giờ ra', w: 'w-[65px]', isStrict: true }, 
+                            { name: 'Vị trí', w: 'w-[230px]', isStrict: true }, 
+                            { name: 'Giờ Công', w: 'w-[75px]', isStrict: true }, 
+                            { name: 'Tổng Nhân Sự', w: 'w-[90px]', isStrict: true }, 
+                            { name: 'Số Kế Hoạch', w: 'w-[90px]', isStrict: true }, 
+                            { name: 'Số Đáp Ứng', w: 'w-[90px]', isStrict: true },
+                            { name: 'Giờ Công Thực Tế', w: 'w-[120px]', isStrict: true }, 
+                            { name: 'Thời Gian\nBù - Trừ', w: 'w-[95px]', isBreak: true }, 
+                            { name: 'Ghi Chú', w: 'w-[280px]' }, 
+                            { name: 'Tỉ Lệ', w: 'w-[60px]', isStrict: true },
+                            { name: 'Đáp Ứng Đạt', w: 'w-[85px]', isStrict: true }, 
+                            { name: 'Đáp Ứng Thiếu', w: 'w-[85px]', isStrict: true }
+                          ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w} ${h.isStrict ? 'whitespace-nowrap' : ''}` }, h.isBreak ? e('div', { className: 'leading-tight font-bold text-center block w-full normal-case break-words' }, 'Thời Gian', e('br'), 'Bù - Trừ') : h.name))
                         )
                       ),
                       e('tbody', { className: 'text-black' },
@@ -338,7 +344,8 @@
                           
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
-                          e('td', { className: 'p-1 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center font-bold text-black focus:outline-none p-0 block bg-transparent', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
+                          // Thêm padding pr-4 để chữ "việc" không bị ép sát vách và bị cắt mất chữ
+                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center font-bold text-black focus:outline-none p-1.5 pr-4 block bg-transparent', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
                           e('td', { className: 'p-2 text-center text-black font-bold align-middle' }, row.gc.toString().replace('.', ',')),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 text-black font-bold focus:outline-none bg-transparent', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 text-black font-bold focus:outline-none bg-transparent', value: inputs[row.skh], onChange: ev => handleInputChange(row.skh, ev.target.value, true) })),
