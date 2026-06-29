@@ -244,6 +244,12 @@
             const baseIndex = 5 + (weekOffset * 7); return allLichHeaders.slice(Math.max(0, baseIndex), baseIndex + 7);
           }, [allLichHeaders, weekOffset]);
 
+          const activeMonthsWithData = React.useMemo(() => {
+            const src = activeTab === 'vi-pham' ? violationData : bienbanData;
+            const months = src.map(item => item.dateInfo.month).filter(m => m !== null);
+            return [...new Set(months)].sort((a, b) => a - b);
+          }, [activeTab, violationData, bienbanData]);
+
           const filteredRawData = React.useMemo(() => {
             const src = activeTab === 'vi-pham' ? violationData : bienbanData;
             return src.filter(item => {
@@ -303,20 +309,20 @@
                         ),
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold text-[12px]' }, 
                           [
-                            { name: 'Ca làm việc', w: 'w-[8%]' }, 
-                            { name: 'Giờ vào', w: 'w-[5%]' }, 
-                            { name: 'Giờ ra', w: 'w-[5%]' }, 
-                            { name: 'Vị trí', w: 'w-[15%]' }, 
-                            { name: 'Giờ Công', w: 'w-[5%]' }, 
-                            { name: 'Tổng Nhân Sự', w: 'w-[7%]' }, 
-                            { name: 'Số Kế Hoạch', w: 'w-[7%]' }, 
-                            { name: 'Số Bán Ra' /*Số Đáp Ứng*/, w: 'w-[7%]' },
-                            { name: 'Giờ Công Thực Tế', w: 'w-[9%]' }, 
-                            { name: 'Thời Gian\nBù - Trừ', w: 'w-[7%]' }, 
-                            { name: 'Ghi Chú', w: 'w-[17%]' }, 
+                            { name: 'Ca làm việc', w: 'w-[7%]' }, 
+                            { name: 'Giờ vào', w: 'w-[4.5%]' }, 
+                            { name: 'Giờ ra', w: 'w-[4.5%]' }, 
+                            { name: 'Vị trí', w: 'w-[16.5%]' }, /* Tăng độ rộng cột Vị Trí */
+                            { name: 'Giờ Công', w: 'w-[4%]' }, 
+                            { name: 'Tổng Nhân Sự', w: 'w-[5.5%]' }, 
+                            { name: 'Số Kế Hoạch', w: 'w-[5.5%]' }, 
+                            { name: 'Số Đáp Ứng', w: 'w-[5.5%]' },
+                            { name: 'Giờ Công Thực Tế', w: 'w-[6.5%]' }, 
+                            { name: 'Thời Gian\nBù - Trừ', w: 'w-[5.5%]' }, 
+                            { name: 'Ghi Chú', w: 'w-[23%]' }, /* Tăng mạnh độ rộng cột Ghi Chú */
                             { name: 'Tỉ Lệ', w: 'w-[4%]' },
                             { name: 'Đáp Ứng Đạt', w: 'w-[4%]' }, 
-                            { name: 'Đáp Ứng Thiếu', w: 'w-[5%]' }
+                            { name: 'Đáp Ứng Thiếu', w: 'w-[4%]' }
                           ].map((h, i) => e('th', { key: i, className: `p-1 text-center text-white align-middle font-bold ${h.w}` }, 
                             h.name === 'Thời Gian\nBù - Trừ' ? 
                             e('div', { className: 'flex flex-col items-center justify-center font-bold text-center w-full leading-tight' }, 
