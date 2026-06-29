@@ -20,8 +20,8 @@
         }
         /* Excel style table borders */
         .excel-table th, .excel-table td { border: 1px solid #000000 !important; }
-        /* Ngăn tên cột xuống hàng */
-        .nowrap-header th {
+        /* Ngăn tên cột xuống hàng (trừ cột bù trừ) */
+        .nowrap-header th:not(.allow-wrap) {
             white-space: nowrap !important;
         }
     </style>
@@ -313,22 +313,23 @@
               activeTab === 'report-daily' && e('div', { className: 'space-y-3' },
                 e('div', { className: 'bg-white rounded-lg shadow-sm overflow-hidden p-1' },
                   e('div', { className: 'overflow-x-auto' },
-                    /* Tối ưu tổng thể min-w-1120px để vừa khít 1 màn hình máy tính thông thường */
+                    /* Tối ưu kích thước bảng min-w-1120px khớp chuẩn một màn hình không bị cuộn ngang */
                     e('table', { className: 'excel-table w-full border-collapse text-center text-[13px] font-bold bg-white text-black min-w-[1120px]' },
                       e('thead', null, 
-                        // TIÊU ĐỀ THEO CHUẨN EXCEL ẢNH (2 ô lớn tách biệt trên cùng 1 hàng)
                         e('tr', { className: 'bg-[#ff7300] text-white text-base font-bold' }, 
                           e('th', { colSpan: 11, className: 'p-2 text-center text-white font-bold tracking-wider text-lg' }, 'ĐIỂM DANH SORT KTC 01'),
                           e('th', { colSpan: 3, className: 'p-2 text-center text-white font-bold tracking-wide text-lg' }, todayStr)
                         ),
-                        // HÀNG TIÊU ĐỀ CỘT - ÉP CHỮ TRÊN 1 DÒNG KHÔNG XUỐNG HÀNG, TỐI ƯU ĐỘ RỘNG TỪNG CỘT
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold nowrap-header' }, 
                           [
-                            { name: 'Ca làm việc', w: 'w-[90px]' }, { name: 'Giờ vào', w: 'w-[65px]' }, { name: 'Giờ ra', w: 'w-[65px]' }, { name: 'Vị trí', w: 'w-[145px]' },
+                            { name: 'Ca làm việc', w: 'w-[90px]' }, { name: 'Giờ vào', w: 'w-[65px]' }, { name: 'Giờ ra', w: 'w-[65px]' }, 
+                            { name: 'Vị trí', w: 'w-[180px]' }, // Tăng lên 180px giúp nội dung Vị trí nằm trọn vẹn trên 1 dòng
                             { name: 'Giờ Công', w: 'w-[70px]' }, { name: 'Tổng Nhân Sự', w: 'w-[85px]' }, { name: 'Số Kế Hoạch', w: 'w-[85px]' }, { name: 'Số Đáp Ứng', w: 'w-[85px]' },
-                            { name: 'Giờ Công Thực Tế', w: 'w-[115px]' }, { name: 'Thời Gian Bù - Trừ', w: 'w-[110px]' }, { name: 'Ghi Chú', w: 'w-[280px]' }, { name: 'Tỉ Lệ', w: 'w-[65px]' },
-                            { name: 'Đáp Ứng Đạt', w: 'w-[85px]' }, { name: 'Đáp Ứng Thiếu', w: 'w-[85px]' }
-                          ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w}` }, h.name))
+                            { name: 'Giờ Công Thực Tế', w: 'w-[115px]' }, 
+                            { name: 'Thời Gian\nBù - Trừ', w: 'w-[75px]', allowWrap: true }, // Cho phép xuống dòng để thu nhỏ cột lại cực kỳ gọn gàng
+                            { name: 'Ghi Chú', w: 'w-[250px]' }, { name: 'Tỉ Lệ', w: 'w-[60px]' },
+                            { name: 'Đáp Ứng Đạt', w: 'w-[80px]' }, { name: 'Đáp Ứng Thiếu', w: 'w-[80px]' }
+                          ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w} ${h.allowWrap ? 'allow-wrap' : ''}` }, h.name))
                         )
                       ),
                       e('tbody', { className: 'text-black' },
@@ -340,12 +341,11 @@
                           { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
                           { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_viec }
                         ].map((row, idx) => e('tr', { key: row.id, className: 'bg-white text-black' },
-                          // GỘP CỘT CA LÀM VIỆC THÀNH 1 Ô CHUNG CHO CẢ 6 DÒNG
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-0 text-center align-middle font-bold text-black bg-transparent' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none bg-transparent', value: inputs.ca_chung, onChange: ev => handleInputChange('ca_chung', ev.target.value) })),
                           
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
-                          e('td', { className: 'p-1 text-center align-middle' }, e('textarea', { className: 'auto-height w-full text-center font-bold text-black focus:outline-none p-0 block resize-none', value: inputs[row.vt], rows: 1, onChange: ev => handleInputChange(row.vt, ev.target.value) })),
+                          e('td', { className: 'p-1 text-center align-middle whitespace-nowrap' }, e('textarea', { className: 'auto-height w-full text-center font-bold text-black focus:outline-none p-0 block resize-none overflow-hidden whitespace-nowrap', value: inputs[row.vt], rows: 1, onChange: ev => handleInputChange(row.vt, ev.target.value) })),
                           e('td', { className: 'p-2 text-center text-black font-bold align-middle' }, row.gc.toString().replace('.', ',')),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 text-black font-bold focus:outline-none bg-transparent', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 text-black font-bold focus:outline-none bg-transparent', value: inputs[row.skh], onChange: ev => handleInputChange(row.skh, ev.target.value, true) })),
@@ -357,24 +357,29 @@
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-2 text-center align-middle font-bold text-black text-sm' }, computed.dapt_dat + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-2 text-center align-middle font-bold text-black text-sm' }, computed.dapt_thieu + '%')
                         )),
-                        e('tr', { className: 'font-bold bg-white text-red-600' },
+                        /* CĂN GIỮA TOÀN BỘ SỐ LIỆU HÀNG TỔNG CỘNG ĐỂ THẲNG HÀNG TUYỆT ĐỐI */
+                        e('tr', { className: 'font-bold bg-white text-red-600 text-center' },
                           e('td', { colSpan: 4, className: 'p-2 text-center text-red-600 font-bold' }, 'Tổng cộng'),
-                          e('td', { className: 'p-2' }), 
+                          e('td', { className: 'p-2 text-center' }, ''), 
                           e('td', { className: 'p-2 text-center' }, computed.total_tns), 
                           e('td', { className: 'p-2 text-center' }, computed.total_skh), 
                           e('td', { className: 'p-2 text-center' }, computed.total_sdung),
-                          e('td', { className: 'p-2 text-center' }, computed.total_gctt.toFixed(1).replace('.', ',')), 
+                          e('td', { className: 'p-2 text-center font-bold' }, computed.total_gctt.toFixed(1).replace('.', ',')), 
                           e('td', { className: 'p-2 text-center' }, '0'), 
-                          e('td', { className: 'p-2' }), 
-                          e('td', { className: 'p-2 text-center' }, '0%'),
+                          e('td', { className: 'p-2 text-center' }, ''), 
+                          e('td', { className: 'p-2 text-center font-bold' }, '0%'),
                           e('td', { className: 'p-2 text-center font-bold text-red-600' }, computed.dapt_dat + '%'), 
                           e('td', { className: 'p-2 text-center font-bold text-red-600' }, computed.dapt_thieu + '%')
                         ),
-                        e('tr', { className: 'font-bold bg-white text-red-600' },
-                          e('td', { colSpan: 4, className: 'p-2 text-center text-red-600 font-bold' }, 'Tổng giờ công Sort'),
-                          e('td', { className: 'p-2' }), e('td', { className: 'p-2' }), e('td', { className: 'p-2' }), e('td', { className: 'p-2' }),
-                          e('td', { colSpan: 3, className: 'p-2 text-center text-red-600 font-bold text-sm' }, computed.total_gctt.toFixed(1).replace('.', ',')),
-                          e('td', { className: 'p-2' }), e('td', { className: 'p-2' }), e('td', { className: 'p-2' })  
+                        /* Ô TIÊU ĐỀ GỘP 5 CỘT ĐẾN HẾT CỘT GIỜ CÔNG - Ô GIÁ TRỊ GỘP 4 CỘT BẮT ĐẦU TỪ TỔNG NHÂN SỰ ĐẾN GIỜ CÔNG THỰC TẾ VÀ CĂN GIỮA */
+                        e('tr', { className: 'font-bold bg-white text-red-600 text-center' },
+                          e('td', { colSpan: 5, className: 'p-2 text-center text-red-600 font-bold' }, 'Tổng giờ công Sort'),
+                          e('td', { colSpan: 4, className: 'p-2 text-center text-red-600 font-bold text-sm' }, computed.total_gctt.toFixed(1).replace('.', ',')),
+                          e('td', { className: 'p-2 text-center' }, '0'), 
+                          e('td', { className: 'p-2 text-center' }, ''), 
+                          e('td', { className: 'p-2 text-center' }, ''),
+                          e('td', { className: 'p-2 text-center' }, ''), 
+                          e('td', { className: 'p-2 text-center' }, '')  
                         )
                       )
                     )
