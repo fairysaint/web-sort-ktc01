@@ -20,8 +20,8 @@
         }
         /* Excel style table borders */
         .excel-table th, .excel-table td { border: 1px solid #000000 !important; }
-        /* Ngăn tên cột xuống hàng (trừ cột bù trừ) */
-        .nowrap-header th:not(.allow-wrap) {
+        /* Ngăn tên cột xuống hàng */
+        .nowrap-header th {
             white-space: nowrap !important;
         }
     </style>
@@ -313,7 +313,6 @@
               activeTab === 'report-daily' && e('div', { className: 'space-y-3' },
                 e('div', { className: 'bg-white rounded-lg shadow-sm overflow-hidden p-1' },
                   e('div', { className: 'overflow-x-auto' },
-                    /* Tối ưu kích thước bảng min-w-1120px khớp chuẩn một màn hình không bị cuộn ngang */
                     e('table', { className: 'excel-table w-full border-collapse text-center text-[13px] font-bold bg-white text-black min-w-[1120px]' },
                       e('thead', null, 
                         e('tr', { className: 'bg-[#ff7300] text-white text-base font-bold' }, 
@@ -323,13 +322,13 @@
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold nowrap-header' }, 
                           [
                             { name: 'Ca làm việc', w: 'w-[90px]' }, { name: 'Giờ vào', w: 'w-[65px]' }, { name: 'Giờ ra', w: 'w-[65px]' }, 
-                            { name: 'Vị trí', w: 'w-[180px]' }, // Tăng lên 180px giúp nội dung Vị trí nằm trọn vẹn trên 1 dòng
+                            { name: 'Vị trí', w: 'w-[180px]' }, 
                             { name: 'Giờ Công', w: 'w-[70px]' }, { name: 'Tổng Nhân Sự', w: 'w-[85px]' }, { name: 'Số Kế Hoạch', w: 'w-[85px]' }, { name: 'Số Đáp Ứng', w: 'w-[85px]' },
                             { name: 'Giờ Công Thực Tế', w: 'w-[115px]' }, 
-                            { name: 'Thời Gian\nBù - Trừ', w: 'w-[75px]', allowWrap: true }, // Cho phép xuống dòng để thu nhỏ cột lại cực kỳ gọn gàng
+                            { name: 'Thời Gian Bù - Trừ', w: 'w-[110px]' }, // Giữ chữ trên 1 dòng chuẩn chỉ với độ rộng 110px
                             { name: 'Ghi Chú', w: 'w-[250px]' }, { name: 'Tỉ Lệ', w: 'w-[60px]' },
                             { name: 'Đáp Ứng Đạt', w: 'w-[80px]' }, { name: 'Đáp Ứng Thiếu', w: 'w-[80px]' }
-                          ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w} ${h.allowWrap ? 'allow-wrap' : ''}` }, h.name))
+                          ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w}` }, h.name))
                         )
                       ),
                       e('tbody', { className: 'text-black' },
@@ -337,7 +336,7 @@
                           { id: 'leader', vt: 'vt_leader', v: 'v_leader', r: 'r_leader', tns: 'tns_leader', skh: 'skh_leader', sd: 'sdung_leader', note: 'note_leader', gc: computed.gc_leader, gctt: computed.gctt_leader, tl: computed.tile_leader },
                           { id: 'nsuat', vt: 'vt_nsuat', v: 'v_nsuat', r: 'r_nsuat', tns: 'tns_nsuat', skh: 'skh_nsuat', sd: 'sdung_nsuat', note: 'note_nsuat', gc: computed.gc_nsuat, gctt: computed.gctt_nsuat, tl: computed.tile_nsuat },
                           { id: 'gcong', vt: 'vt_gcong', v: 'v_gcong', r: 'r_gcong', tns: 'tns_gcong', skh: 'skh_gcong', sd: 'sdung_gcong', note: 'note_gcong', gc: computed.gc_gcong, gctt: computed.gctt_gcong, tl: computed.tile_gcong },
-                          { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
+                          { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd_tns: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
                           { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
                           { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_viec }
                         ].map((row, idx) => e('tr', { key: row.id, className: 'bg-white text-black' },
@@ -357,7 +356,6 @@
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-2 text-center align-middle font-bold text-black text-sm' }, computed.dapt_dat + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-2 text-center align-middle font-bold text-black text-sm' }, computed.dapt_thieu + '%')
                         )),
-                        /* CĂN GIỮA TOÀN BỘ SỐ LIỆU HÀNG TỔNG CỘNG ĐỂ THẲNG HÀNG TUYỆT ĐỐI */
                         e('tr', { className: 'font-bold bg-white text-red-600 text-center' },
                           e('td', { colSpan: 4, className: 'p-2 text-center text-red-600 font-bold' }, 'Tổng cộng'),
                           e('td', { className: 'p-2 text-center' }, ''), 
@@ -371,15 +369,10 @@
                           e('td', { className: 'p-2 text-center font-bold text-red-600' }, computed.dapt_dat + '%'), 
                           e('td', { className: 'p-2 text-center font-bold text-red-600' }, computed.dapt_thieu + '%')
                         ),
-                        /* Ô TIÊU ĐỀ GỘP 5 CỘT ĐẾN HẾT CỘT GIỜ CÔNG - Ô GIÁ TRỊ GỘP 4 CỘT BẮT ĐẦU TỪ TỔNG NHÂN SỰ ĐẾN GIỜ CÔNG THỰC TẾ VÀ CĂN GIỮA */
+                        /* Ô TIÊU ĐỀ: Mở rộng đến cột Giờ công (colSpan=5). GIÁ TRỊ: Mở rộng từ cột Tổng nhân sự đến cột Đáp ứng thiếu (colSpan=9) */
                         e('tr', { className: 'font-bold bg-white text-red-600 text-center' },
                           e('td', { colSpan: 5, className: 'p-2 text-center text-red-600 font-bold' }, 'Tổng giờ công Sort'),
-                          e('td', { colSpan: 4, className: 'p-2 text-center text-red-600 font-bold text-sm' }, computed.total_gctt.toFixed(1).replace('.', ',')),
-                          e('td', { className: 'p-2 text-center' }, '0'), 
-                          e('td', { className: 'p-2 text-center' }, ''), 
-                          e('td', { className: 'p-2 text-center' }, ''),
-                          e('td', { className: 'p-2 text-center' }, ''), 
-                          e('td', { className: 'p-2 text-center' }, '')  
+                          e('td', { colSpan: 9, className: 'p-2 text-center text-red-600 font-bold text-sm tracking-wide bg-amber-50/10' }, computed.total_gctt.toFixed(1).replace('.', ','))
                         )
                       )
                     )
