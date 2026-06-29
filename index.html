@@ -101,12 +101,13 @@
           const todayStr = React.useMemo(() => getTodayString(), []);
 
           const [inputs, setInputs] = React.useState({
-            ca_leader: '07:00-16:00', vt_leader: 'Leader', v_leader: '07:30', r_leader: '16:30', tns_leader: 3, skh_leader: 3, sdung_leader: 3, note_leader: '',
-            ca_nsuat: '07:00-16:00', vt_nsuat: 'NV Năng suất', v_nsuat: '07:00', r_nsuat: '16:30', tns_nsuat: 39, skh_nsuat: 32, sdung_nsuat: 31, note_nsuat: '1 nhân viên off bệnh',
-            ca_gcong: '07:00-16:00', vt_gcong: 'NV Giờ công', v_gcong: '07:00', r_gcong: '17:30', tns_gcong: 2, skh_gcong: 2, sdung_gcong: 2, note_gcong: '',
-            ca_thuviec: '07:00-16:00', vt_thuviec: 'Nhân viên thử việc', v_thuviec: '07:30', r_thuviec: '16:30', tns_thuviec: 0, skh_thuviec: 0, sdung_thuviec: 0, note_thuviec: '',
-            ca_fl_had: '07:00-16:00', vt_fl_had: 'FL - Hoa Anh Đào', v_fl_had: '08:00', r_fl_had: '17:00', tns_fl_had: 0, skh_fl_had: 0, sdung_fl_had: 0, note_fl_had: '',
-            ca_fl_viec: '07:00-16:00', vt_fl_viec: 'FL - Viecco', v_fl_viec: '08:00', r_fl_viec: '17:00', tns_fl_viec: 0, skh_fl_viec: 0, sdung_fl_viec: 0, note_fl_viec: '',
+            ca_chung: '07:00-16:00',
+            vt_leader: 'Leader', v_leader: '07:30', r_leader: '16:30', tns_leader: 3, skh_leader: 3, sdung_leader: 3, note_leader: '',
+            vt_nsuat: 'NV Năng suất', v_nsuat: '07:00', r_nsuat: '16:30', tns_nsuat: 39, skh_nsuat: 32, sdung_nsuat: 31, note_nsuat: '1 nhân viên off bệnh',
+            vt_gcong: 'NV Giờ công', v_gcong: '07:00', r_gcong: '17:30', tns_gcong: 2, skh_gcong: 2, sdung_gcong: 2, note_gcong: '',
+            vt_thuviec: 'Nhân viên thử việc', v_thuviec: '07:30', r_thuviec: '16:30', tns_thuviec: 0, skh_thuviec: 0, sdung_thuviec: 0, note_thuviec: '',
+            vt_fl_had: 'FL - Hoa Anh Đào', v_fl_had: '08:00', r_fl_had: '17:00', tns_fl_had: 0, skh_fl_had: 0, sdung_fl_had: 0, note_fl_had: '',
+            vt_fl_viec: 'FL - Viecco', v_fl_viec: '08:00', r_fl_viec: '17:00', tns_fl_viec: 0, skh_fl_viec: 0, sdung_fl_viec: 0, note_fl_viec: '',
             feeder_cbs1: 19701, feeder_cbs2: 37422, tron_lan: 1000, forecast: 65000,
             hang_cho_ra: 2990, hang_cho_xuat: 40892, hang_lien_vung: 0, hang_noi_vung: 0,
             phat_sinh: 'Không'
@@ -279,7 +280,7 @@
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-500 text-center text-xs overflow-x-auto shadow-sm' },
               [
                 ['lich-lam-viec', 'Bảng Lịch Tuần 📅'], ['report-daily', 'Report & Tự Tính 📊'], ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️'], ['bien-ban', 'Biên Bản Quy Trình 📝']
-              ].map(tab => e('button', { key: tab[0], onClick: () => { setActiveTab(tab[0]); setFilterMonth(''); setFilterName(''); }, className: 'flex-1 min-w-[100px] py-2.5 border-b-2 font-bold transition-all ' + (activeTab === tab[0] ? 'border-orange-500 text-[#ff7300] bg-orange-50/40' : 'border-transparent hover:text-slate-800') }, tab[1]))
+              ].map(tab => e('button', { key: tab[0], onClick: () => { setActiveTab(tab[0]); setFilterMonth(''); setFilterName(''); }, className: 'flex-1 min-w-[100px] py-2.5 border-b-2 font-bold transition-all ' + (activeTab === tab[0] ? 'border-orange-50 text-[#ff7300] bg-orange-50/40' : 'border-transparent hover:text-slate-800') }, tab[1]))
             ),
 
             e('main', { className: 'p-3 w-full max-w-[1500px] mx-auto flex-1 space-y-3' },
@@ -312,33 +313,36 @@
               activeTab === 'report-daily' && e('div', { className: 'space-y-3' },
                 e('div', { className: 'bg-white rounded-lg shadow-sm overflow-hidden p-1' },
                   e('div', { className: 'overflow-x-auto' },
-                    e('table', { className: 'excel-table w-full border-collapse text-center text-[13px] font-bold bg-white text-black min-w-[1250px]' },
+                    /* Tối ưu tổng thể min-w-1120px để vừa khít 1 màn hình máy tính thông thường */
+                    e('table', { className: 'excel-table w-full border-collapse text-center text-[13px] font-bold bg-white text-black min-w-[1120px]' },
                       e('thead', null, 
                         // TIÊU ĐỀ THEO CHUẨN EXCEL ẢNH (2 ô lớn tách biệt trên cùng 1 hàng)
                         e('tr', { className: 'bg-[#ff7300] text-white text-base font-bold' }, 
                           e('th', { colSpan: 11, className: 'p-2 text-center text-white font-bold tracking-wider text-lg' }, 'ĐIỂM DANH SORT KTC 01'),
                           e('th', { colSpan: 3, className: 'p-2 text-center text-white font-bold tracking-wide text-lg' }, todayStr)
                         ),
-                        // HÀNG TIÊU ĐỀ CỘT - ÉP CHỮ TRÊN 1 DÒNG KHÔNG XUỐNG HÀNG
+                        // HÀNG TIÊU ĐỀ CỘT - ÉP CHỮ TRÊN 1 DÒNG KHÔNG XUỐNG HÀNG, TỐI ƯU ĐỘ RỘNG TỪNG CỘT
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold nowrap-header' }, 
                           [
-                            { name: 'Ca làm việc', w: 'w-[100px]' }, { name: 'Giờ vào', w: 'w-[70px]' }, { name: 'Giờ ra', w: 'w-[70px]' }, { name: 'Vị trí', w: 'w-[160px]' },
-                            { name: 'Giờ Công', w: 'w-[75px]' }, { name: 'Tổng Nhân Sự', w: 'w-[100px]' }, { name: 'Số Kế Hoạch', w: 'w-[100px]' }, { name: 'Số Đáp Ứng', w: 'w-[100px]' },
-                            { name: 'Giờ Công Thực Tế', w: 'w-[130px]' }, { name: 'Thời Gian Bù - Trừ', w: 'w-[120px]' }, { name: 'Ghi Chú', w: 'w-[230px]' }, { name: 'Tỉ Lệ', w: 'w-[70px]' },
-                            { name: 'Đáp Ứng Đạt', w: 'w-[100px]' }, { name: 'Đáp Ứng Thiếu', w: 'w-[100px]' }
+                            { name: 'Ca làm việc', w: 'w-[90px]' }, { name: 'Giờ vào', w: 'w-[65px]' }, { name: 'Giờ ra', w: 'w-[65px]' }, { name: 'Vị trí', w: 'w-[145px]' },
+                            { name: 'Giờ Công', w: 'w-[70px]' }, { name: 'Tổng Nhân Sự', w: 'w-[85px]' }, { name: 'Số Kế Hoạch', w: 'w-[85px]' }, { name: 'Số Đáp Ứng', w: 'w-[85px]' },
+                            { name: 'Giờ Công Thực Tế', w: 'w-[115px]' }, { name: 'Thời Gian Bù - Trừ', w: 'w-[110px]' }, { name: 'Ghi Chú', w: 'w-[280px]' }, { name: 'Tỉ Lệ', w: 'w-[65px]' },
+                            { name: 'Đáp Ứng Đạt', w: 'w-[85px]' }, { name: 'Đáp Ứng Thiếu', w: 'w-[85px]' }
                           ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w}` }, h.name))
                         )
                       ),
                       e('tbody', { className: 'text-black' },
                         [
-                          { id: 'leader', ca: 'ca_leader', vt: 'vt_leader', v: 'v_leader', r: 'r_leader', tns: 'tns_leader', skh: 'skh_leader', sd: 'sdung_leader', note: 'note_leader', gc: computed.gc_leader, gctt: computed.gctt_leader, tl: computed.tile_leader },
-                          { id: 'nsuat', ca: 'ca_nsuat', vt: 'vt_nsuat', v: 'v_nsuat', r: 'r_nsuat', tns: 'tns_nsuat', skh: 'skh_nsuat', sd: 'sdung_nsuat', note: 'note_nsuat', gc: computed.gc_nsuat, gctt: computed.gctt_nsuat, tl: computed.tile_nsuat },
-                          { id: 'gcong', ca: 'ca_gcong', vt: 'vt_gcong', v: 'v_gcong', r: 'r_gcong', tns: 'tns_gcong', skh: 'skh_gcong', sd: 'sdung_gcong', note: 'note_gcong', gc: computed.gc_gcong, gctt: computed.gctt_gcong, tl: computed.tile_gcong },
-                          { id: 'thuviec', ca: 'ca_thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
-                          { id: 'fl_had', ca: 'ca_fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
-                          { id: 'fl_viec', ca: 'ca_fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_viec }
+                          { id: 'leader', vt: 'vt_leader', v: 'v_leader', r: 'r_leader', tns: 'tns_leader', skh: 'skh_leader', sd: 'sdung_leader', note: 'note_leader', gc: computed.gc_leader, gctt: computed.gctt_leader, tl: computed.tile_leader },
+                          { id: 'nsuat', vt: 'vt_nsuat', v: 'v_nsuat', r: 'r_nsuat', tns: 'tns_nsuat', skh: 'skh_nsuat', sd: 'sdung_nsuat', note: 'note_nsuat', gc: computed.gc_nsuat, gctt: computed.gctt_nsuat, tl: computed.tile_nsuat },
+                          { id: 'gcong', vt: 'vt_gcong', v: 'v_gcong', r: 'r_gcong', tns: 'tns_gcong', skh: 'skh_gcong', sd: 'sdung_gcong', note: 'note_gcong', gc: computed.gc_gcong, gctt: computed.gctt_gcong, tl: computed.tile_gcong },
+                          { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
+                          { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
+                          { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_viec }
                         ].map((row, idx) => e('tr', { key: row.id, className: 'bg-white text-black' },
-                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none bg-transparent', value: inputs[row.ca], onChange: ev => handleInputChange(row.ca, ev.target.value) })),
+                          // GỘP CỘT CA LÀM VIỆC THÀNH 1 Ô CHUNG CHO CẢ 6 DÒNG
+                          idx === 0 && e('td', { rowSpan: 6, className: 'p-0 text-center align-middle font-bold text-black bg-transparent' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none bg-transparent', value: inputs.ca_chung, onChange: ev => handleInputChange('ca_chung', ev.target.value) })),
+                          
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
                           e('td', { className: 'p-1 text-center align-middle' }, e('textarea', { className: 'auto-height w-full text-center font-bold text-black focus:outline-none p-0 block resize-none', value: inputs[row.vt], rows: 1, onChange: ev => handleInputChange(row.vt, ev.target.value) })),
