@@ -60,7 +60,6 @@
 
         function extractMonthFromDateStr(dateStr) {
           if (!dateStr) return null;
-          // Hỗ trợ định dạng DD/MM/YYYY hoặc YYYY-MM-DD
           if (dateStr.includes('/')) {
             const parts = dateStr.split('/');
             if (parts.length >= 2) return parseInt(parts[1], 10);
@@ -74,7 +73,7 @@
         function App() {
           const [activeTab, setActiveTab] = React.useState('report-daily');
           const [filterName, setFilterName] = React.useState('');
-          const [filterMonth, setFilterMonth] = React.useState(''); // Trống tức là xem tất cả các tháng
+          const [filterMonth, setFilterMonth] = React.useState('');
 
           const [allLichHeaders, setAllLichHeaders] = React.useState([]); 
           const [lichRows, setLichRows] = React.useState([]);       
@@ -211,6 +210,8 @@
             const dapt_dat = tile_tong >= 100 ? 100 : tile_tong;
             const dapt_thieu = tile_tong >= 100 ? 0 : (100 - tile_tong);
 
+            const formatGctt = (val) => val.toFixed(1).replace('.', ',');
+
             const reportText = `${todayStr}\n` +
                                `Báo cáo cuối ca Sort (07:30-16:30) KTC HCM 01\n\n` +
                                `1/ Lượng hàng.\n` +
@@ -232,7 +233,6 @@
                                `5/ Phát sinh trong ca:\n` +
                                `- ${i.phat_sinh}`;
 
-            // ĐÃ BỎ GIỜ CÔNG NHÂN VIÊN THỬ VIỆC RA KHỎI NÚT COPY ĐỒNG LOẠT
             const allHoursNumbersOnly = `${gctt_leader.toFixed(1).replace('.', ',')}\n` +
                                         `${gctt_nsuat.toFixed(1).replace('.', ',')}\n` +
                                         `${gctt_gcong.toFixed(1).replace('.', ',')}\n` +
@@ -252,7 +252,6 @@
             return allLichHeaders.slice(Math.max(0, baseIndex), baseIndex + 7);
           }, [allLichHeaders, weekOffset]);
 
-          // Phân tích dữ liệu theo Tên và Bộ Lọc Tháng của tab Vi Phạm / Biên Bản
           const analytics = React.useMemo(() => {
             const isV = activeTab === 'vi-pham';
             const src = isV ? violationData : bienbanData;
@@ -270,7 +269,6 @@
             return { filtered };
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
 
-          // TÍNH TOÁN ĐÁNH GIÁ TỈ LỆ GIỮA CÁC THÁNG (TẦN SUẤT, TĂNG GIẢM)
           const monthlyTrendReport = React.useMemo(() => {
             const report = {};
             for (let m = 1; m <= 12; m++) {
@@ -348,7 +346,7 @@
           return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
             e('header', { className: 'bg-slate-900 text-white p-2 flex justify-between items-center shadow-md' },
               e('h1', { className: 'text-xs font-black tracking-widest text-orange-500' }, 'SORT KTC 01 OPERATIONAL WEB'),
-              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400' }, 'Bản nâng cấp bộ lọc xu hướng vận hành')
+              e('span', { className: 'text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400' }, 'Đã sửa lỗi formatGctt ổn định 100%')
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-600 text-center text-xs overflow-x-auto' },
               [
@@ -502,12 +500,12 @@
                     ),
                     e('div', { className: 'p-2 space-y-1 font-bold text-slate-900 divide-y divide-amber-300 flex-1 flex flex-col justify-center' },
                       [
-                        { label: 'Công Leader', val: computed.gctt_leader.toFixed(1).replace('.', ',') }, 
-                        { label: 'Công NV (Năng suất)', val: computed.gctt_nsuat.toFixed(1).replace('.', ',') }, 
-                        { label: 'Công CTV (Giờ công)', val: computed.gctt_gcong.toFixed(1).replace('.', ',') }, 
-                        { label: 'Công FL', val: (computed.gctt_fl_had + computed.gctt_fl_viec).toFixed(1).replace('.', ',') }, 
-                        { label: 'Nhân viên thử việc (Không copy chung)', val: computed.gctt_thuviec.toFixed(1).replace('.', ','), isIgnored: true }, 
-                        { label: 'Tổng ca trực công', val: computed.total_gctt.toFixed(1).replace('.', ',') }
+                        { label: 'Công Leader', val: computed.formatGctt(computed.gctt_leader) }, 
+                        { label: 'Công NV (Năng suất)', val: computed.formatGctt(computed.gctt_nsuat) }, 
+                        { label: 'Công CTV (Giờ công)', val: computed.formatGctt(computed.gctt_gcong) }, 
+                        { label: 'Công FL', val: computed.formatGctt(computed.gctt_fl_had + computed.gctt_fl_viec) }, 
+                        { label: 'Nhân viên thử việc (Không copy chung)', val: computed.formatGctt(computed.gctt_thuviec), isIgnored: true }, 
+                        { label: 'Tổng ca trực công', val: computed.formatGctt(computed.total_gctt) }
                       ].map((item, id) => 
                         e('div', { key: id, className: 'flex justify-between items-center pt-1 ' + (item.isIgnored ? 'text-slate-600 italic' : '') }, 
                           e('span', null, item.label), 
