@@ -56,7 +56,7 @@
 
         function parseDateDetails(dateStr) {
           if (!dateStr) return { day: null, month: null, rawDate: "" };
-          let cleanStr = dateStr.split(' ')[0]; // Bỏ phần giờ nếu có
+          let cleanStr = dateStr.split(' ')[0];
           let parts = [];
           if (cleanStr.includes('/')) parts = cleanStr.split('/');
           else if (cleanStr.includes('-')) parts = cleanStr.split('-');
@@ -66,7 +66,6 @@
             let m = parseInt(parts[1], 10);
             let y = parts[0].length > 2 ? parseInt(parts[0], 10) : parseInt(parts[2], 10);
             
-            // Chuẩn hóa chuỗi ngày dạng DD/MM
             let dStr = String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0');
             return { day: d, month: m, rawDate: dStr };
           }
@@ -129,7 +128,6 @@
                   setLichRows(parsedStaff);
                 }
 
-                // Tải Vi phạm (Chỉ lấy dữ liệu từ tháng 5 trở đi)
                 const resVi = await fetch(URL_VI_PHAM);
                 const rowsVi = parseCSV(await resVi.text());
                 let parsedVi = [];
@@ -143,7 +141,6 @@
                 });
                 setViolationData(parsedVi);
 
-                // Tải Biên bản (Chỉ lấy dữ liệu từ tháng 5 trở đi)
                 const resBb = await fetch(URL_BIEN_BAN);
                 const rowsBb = parseCSV(await resBb.text());
                 let parsedBb = [];
@@ -197,8 +194,14 @@
             const total_gctt = gctt_leader + gctt_nsuat + gctt_gcong + gctt_thuviec + gctt_fl_had + gctt_fl_viec;
             const act_don = i.feeder_cbs1 + i.feeder_cbs2 + i.tron_lan;
             
+            // Khai báo đầy đủ các biến tỉ lệ đáp ứng tránh lỗi ReferenceError
+            const tile_leader = i.skh_leader > 0 ? Math.round((i.sdung_leader / i.skh_leader) * 100) : 0;
             const tile_nsuat = i.skh_nsuat > 0 ? Math.round((i.sdung_nsuat / i.skh_nsuat) * 100) : 0;
             const tile_gcong = i.skh_gcong > 0 ? Math.round((i.sdung_gcong / i.skh_gcong) * 100) : 0;
+            const tile_thuviec = i.skh_thuviec > 0 ? Math.round((i.sdung_thuviec / i.skh_thuviec) * 100) : 0;
+            const tile_fl_had = i.skh_fl_had > 0 ? Math.round((i.sdung_fl_had / i.skh_fl_had) * 100) : 0;
+            const tile_fl_viec = i.skh_fl_viec > 0 ? Math.round((i.sdung_fl_viec / i.skh_fl_viec) * 100) : 0;
+
             const total_fl_skh = i.skh_fl_had + i.skh_fl_viec;
             const total_fl_sdung = i.sdung_fl_had + i.sdung_fl_viec;
             const tile_fl = total_fl_skh > 0 ? Math.round((total_fl_sdung / total_fl_skh) * 100) : 0;
@@ -221,7 +224,6 @@
             const baseIndex = 5 + (weekOffset * 7); return allLichHeaders.slice(Math.max(0, baseIndex), baseIndex + 7);
           }, [allLichHeaders, weekOffset]);
 
-          // Lọc dữ liệu thô cho View chính
           const filteredRawData = React.useMemo(() => {
             const isV = activeTab === 'vi-pham';
             const src = isV ? violationData : bienbanData;
@@ -233,7 +235,6 @@
             });
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
 
-          // TỰ ĐỘNG PHÂN TÍCH VÀ ĐƯA RA ĐÁNH GIÁ CHỮ (REAL-TIME TEXT INSIGHTS)
           const textAnalysisInsight = React.useMemo(() => {
             if (activeTab !== 'vi-pham' && activeTab !== 'bien-ban') return "";
             
@@ -241,14 +242,12 @@
             const titleStr = isV ? "Lỗi Vi Phạm" : "Biên Bản Quy Trình";
             const currentSrc = isV ? violationData : bienbanData;
 
-            // Tổng số lượng sau bộ lọc tên hiện tại (nhưng áp dụng riêng theo mốc tháng)
             const matchedWithNameSrc = currentSrc.filter(x => x.name.toLowerCase().includes(filterName.toLowerCase()));
             
             if (matchedWithNameSrc.length === 0) {
               return `Hệ thống ghi nhận không có dữ liệu ${titleStr} nào từ tháng 5 trở đi phù hợp với từ khóa tìm kiếm "${filterName}".`;
             }
 
-            // Nếu ĐỂ TẤT CẢ CÁC THÁNG (filterMonth trống) -> Phân tích Tháng cao nhất / thấp nhất
             if (filterMonth === '') {
               const monthCounts = {};
               for (let m = 5; m <= 12; m++) monthCounts[m] = 0;
@@ -280,7 +279,6 @@
               return insightText;
 
             } else {
-              // Nếu CHỌN CHI TIẾT MỘT THÁNG CỤ THỂ -> Phân tích ngày cao nhất / thấp nhất trong tháng đó
               const selectedM = parseInt(filterMonth, 10);
               const monthSpecificSrc = matchedWithNameSrc.filter(x => x.dateInfo.month === selectedM);
               
@@ -312,7 +310,6 @@
             }
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
 
-          // Thống kê 12 khối nhỏ phía trên
           const singleTrendReport = React.useMemo(() => {
             const isV = activeTab === 'vi-pham';
             const src = isV ? violationData : bienbanData;
@@ -515,7 +512,6 @@
 
               (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-2' },
                 
-                // Khối Đánh giá Xu hướng dạng số theo tháng cũ
                 e('div', { className: 'bg-white p-2 rounded border border-orange-200 shadow-sm' },
                   e('div', { className: 'mb-1 font-black text-slate-800 text-[10px] uppercase text-orange-600' }, `📊 THỐNG KÊ SỐ CA THEO THÁNG (GIAI ĐOẠN TỪ THÁNG 5 TRỞ ĐI)`),
                   e('div', { className: 'grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-1 text-center font-mono' },
@@ -530,7 +526,6 @@
                   )
                 ),
 
-                // 🌟 KHỐI ĐÁNH GIÁ CHỮ BIẾN ĐỘNG THEO BỘ LỌC (REAL-TIME TEXT INSIGHTS)
                 e('div', { className: 'bg-amber-50 border border-amber-300 p-3 rounded-md shadow-sm' },
                   e('div', { className: 'flex items-center gap-1.5 font-black text-amber-900 text-xs uppercase mb-1' },
                     e('span', null, '🤖 TRỢ LÝ PHÂN TÍCH XU HƯỚNG TỰ ĐỘNG')
@@ -538,7 +533,6 @@
                   e('p', { className: 'text-slate-800 font-bold text-[11px] leading-relaxed font-sans' }, textAnalysisInsight)
                 ),
 
-                // Bộ lọc danh sách dữ liệu
                 e('div', { className: 'bg-white p-2 rounded border flex flex-wrap gap-2 justify-between items-center shadow-sm text-xs' },
                   e('span', { className: 'font-black text-emerald-700 uppercase' }, `🔓 Bộ lọc danh sách chi tiết`),
                   e('div', { className: 'flex gap-2 items-center' },
@@ -554,7 +548,6 @@
                   )
                 ),
 
-                // Bảng hiển thị chi tiết lỗi vi phạm và biên bản
                 e('div', { className: 'bg-white rounded border overflow-x-auto shadow' },
                   e('table', { className: 'w-full text-center text-[10px]' },
                     e('thead', { className: 'bg-slate-50 font-bold border-b text-slate-700' }, 
