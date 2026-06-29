@@ -11,17 +11,16 @@
         body, input, textarea, select, button, table {
             font-family: 'Times New Roman', Times, serif !important;
         }
-        .auto-height { 
-            overflow: hidden; 
-            height: auto; 
-            resize: none; 
-            background: transparent;
-        }
         /* Excel style table borders */
         .excel-table th, .excel-table td { border: 1px solid #000000 !important; }
-        /* Ngăn các header khác xuống hàng (trừ cột Bù-Trừ xử lý riêng) */
-        .nowrap-header th:not(.break-header) {
-            white-space: nowrap !important;
+        
+        /* Cấu hình textarea ghi chú để tự co giãn theo dòng */
+        .note-textarea {
+            resize: none;
+            overflow: hidden;
+            min-height: 28px;
+            background: transparent;
+            word-break: break-word;
         }
     </style>
 </head>
@@ -179,6 +178,14 @@
             setInputs(p => ({ ...p, [key]: isNum ? (parseFloat(value) || 0) : value }));
           };
 
+          // Hàm tự động co giãn chiều cao cho riêng Textarea Ghi chú khi nhập dữ liệu
+          const handleNoteChange = (key, ev) => {
+            const target = ev.target;
+            target.style.height = 'auto';
+            target.style.height = target.scrollHeight + 'px';
+            handleInputChange(key, target.value);
+          };
+
           const copyToClipboard = (text, message) => {
             navigator.clipboard.writeText(text);
             alert(message);
@@ -259,18 +266,6 @@
             });
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
 
-          React.useEffect(() => {
-            const handleResize = () => {
-              document.querySelectorAll('.auto-height').forEach(el => {
-                el.style.height = 'auto';
-                el.style.height = el.scrollHeight + 'px';
-              });
-            };
-            handleResize();
-            window.addEventListener('resize', handleResize);
-            return () => window.removeEventListener('resize', handleResize);
-          }, [inputs, activeTab]);
-
           return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
             e('header', { className: 'bg-[#ff7300] text-white p-3 flex justify-between items-center shadow-md' },
               e('h1', { className: 'text-sm font-bold tracking-wider uppercase' }, 'SORT KTC 01 OPERATIONAL CENTER'),
@@ -318,17 +313,17 @@
                           e('th', { colSpan: 11, className: 'p-2 text-center text-white font-bold tracking-wider text-lg' }, 'ĐIỂM DANH SORT KTC 01'),
                           e('th', { colSpan: 3, className: 'p-2 text-center text-white font-bold tracking-wide text-lg' }, todayStr)
                         ),
-                        e('tr', { className: 'bg-[#ff7300] text-white font-bold nowrap-header' }, 
+                        e('tr', { className: 'bg-[#ff7300] text-white font-bold' }, 
                           [
                             { name: 'Ca làm việc', w: 'w-[90px]' }, { name: 'Giờ vào', w: 'w-[65px]' }, { name: 'Giờ ra', w: 'w-[65px]' }, 
-                            { name: 'Vị trí', w: 'w-[200px]' }, // Tăng độ rộng cột vị trí lên 200px
+                            { name: 'Vị trí', w: 'w-[220px]' }, // Mở rộng cột vị trí lên 220px chống khuất chữ
                             { name: 'Giờ Công', w: 'w-[70px]' }, { name: 'Tổng Nhân Sự', w: 'w-[85px]' }, { name: 'Số Kế Hoạch', w: 'w-[85px]' }, { name: 'Số Đáp Ứng', w: 'w-[85px]' },
                             { name: 'Giờ Công Thực Tế', w: 'w-[115px]' }, 
-                            { name: 'Thời Gian\nBù - Trừ', w: 'w-[70px]', isBreak: true }, // Co nhỏ cột và ngắt dòng chủ động
-                            { name: 'Ghi Chú', w: 'w-[280px]' }, // Tăng độ rộng cột ghi chú lên 280px
+                            { name: 'Thời Gian\nBù - Trừ', w: 'w-[85px]', isBreak: true }, // Cập nhật đúng cấu trúc ngắt dòng yêu cầu
+                            { name: 'Ghi Chú', w: 'w-[300px]' }, // Mở rộng bề rộng cột Ghi chú
                             { name: 'Tỉ Lệ', w: 'w-[60px]' },
                             { name: 'Đáp Ứng Đạt', w: 'w-[80px]' }, { name: 'Đáp Ứng Thiếu', w: 'w-[80px]' }
-                          ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w} ${h.isBreak ? 'break-header leading-tight' : ''}` }, h.isBreak ? e('div', null, 'Thời Gian', e('br'), 'Bù - Trừ') : h.name))
+                          ].map((h, i) => e('th', { key: i, className: `p-2 text-center text-white align-middle font-bold ${h.w}` }, h.isBreak ? e('div', { className: 'leading-tight' }, 'Thời Gian', e('br'), 'Bù - Trừ') : h.name))
                         )
                       ),
                       e('tbody', { className: 'text-black' },
@@ -344,16 +339,15 @@
                           
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 font-bold text-black focus:outline-none', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
-                          // Thêm whitespace-nowrap vào ô Input của Vị trí để không bị nhảy dòng chữ
-                          e('td', { className: 'p-1 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center font-bold text-black focus:outline-none p-0 block bg-transparent whitespace-nowrap', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
+                          e('td', { className: 'p-1 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center font-bold text-black focus:outline-none p-0 block bg-transparent', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
                           e('td', { className: 'p-2 text-center text-black font-bold align-middle' }, row.gc.toString().replace('.', ',')),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 text-black font-bold focus:outline-none bg-transparent', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 text-black font-bold focus:outline-none bg-transparent', value: inputs[row.skh], onChange: ev => handleInputChange(row.skh, ev.target.value, true) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 text-black font-bold focus:outline-none bg-transparent', value: inputs[row.sd], onChange: ev => handleInputChange(row.sd, ev.target.value, true) })),
                           e('td', { className: 'p-2 text-center text-black font-bold align-middle' }, row.gctt.toFixed(1).replace('.', ',')),
                           e('td', { className: 'p-2 text-center align-middle' }, '0'),
-                          // Thay thế textarea bằng input text và thêm lớp dữ liệu không xuống dòng cho ô Ghi chú
-                          e('td', { className: 'p-1 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center font-bold text-black focus:outline-none p-0 block bg-transparent whitespace-nowrap', value: inputs[row.note], onChange: ev => handleInputChange(row.note, ev.target.value) })),
+                          // Thay đổi thành Textarea và cho phép mở rộng chiều cao tự động khi gõ xuống dòng
+                          e('td', { className: 'p-1 text-center align-middle' }, e('textarea', { rows: 1, className: 'w-full text-center font-bold text-black focus:outline-none p-0 block border-0 note-textarea', value: inputs[row.note], onChange: ev => handleNoteChange(row.note, ev) })),
                           e('td', { className: 'p-2 text-center font-bold text-black align-middle' }, row.tl + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-2 text-center align-middle font-bold text-black text-sm' }, computed.dapt_dat + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-2 text-center align-middle font-bold text-black text-sm' }, computed.dapt_thieu + '%')
