@@ -379,9 +379,18 @@
                 e('div', { className: 'flex justify-between items-center border-b border-slate-100 pb-2' },
                   e('h2', { className: 'font-bold text-xs text-slate-800 uppercase tracking-wide' }, 'Lịch Trực Ban Toàn Di Diện Ca'),
                   e('div', { className: 'flex items-center gap-1 bg-slate-100 p-0.5 rounded border border-slate-200 text-[10px]' },
-                    e('button', { className: 'px-2 py-0.5 rounded hover:bg-white font-bold text-slate-600 transition' }, '◀', { onClick: () => setWeekOffset(p => p - 1) }),
-                    e('button', { className: 'px-2 py-0.5 rounded bg-orange-500 text-white font-bold shadow-sm' }, 'Tuần hiện tại', { onClick: () => setWeekOffset(0) }),
-                    e('button', { className: 'px-2 py-0.5 rounded hover:bg-white font-bold text-slate-600 transition' }, '▶', { onClick: () => setWeekOffset(p => p + 1) })
+                    e('button', { 
+                      className: 'px-2 py-0.5 rounded hover:bg-white font-bold text-slate-600 transition',
+                      onClick: () => setWeekOffset(p => p - 1)
+                    }, '◀'),
+                    e('button', { 
+                      className: 'px-2 py-0.5 rounded bg-orange-500 text-white font-bold shadow-sm',
+                      onClick: () => setWeekOffset(0)
+                    }, 'Tuần hiện tại'),
+                    e('button', { 
+                      className: 'px-2 py-0.5 rounded hover:bg-white font-bold text-slate-600 transition',
+                      onClick: () => setWeekOffset(p => p + 1)
+                    }, '▶')
                   )
                 ),
                 e('div', { className: 'overflow-x-auto border border-slate-200 rounded-md' },
@@ -433,14 +442,14 @@
                           idx === 0 && e('td', { rowSpan: 6, className: 'border border-slate-200 p-2 font-bold text-slate-800 bg-slate-50/50' }, '07:00-16:00'),
                           e('td', { className: 'border border-slate-200 p-0' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 bg-transparent font-semibold text-slate-800 focus:bg-white focus:outline-none', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
                           e('td', { className: 'border border-slate-200 p-0' }, e('input', { type: 'text', className: 'w-full text-center p-1.5 bg-transparent font-semibold text-slate-800 focus:bg-white focus:outline-none', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
-                          e('td', { className: 'border border-slate-200 p-1.5 align-middle text-left w-[150px]' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full text-center bg-transparent font-semibold text-slate-800 focus:bg-white block break-words whitespace-pre-wrap focus:outline-none leading-relaxed' }, inputs[row.vt])),
+                          e('td', { className: 'border border-slate-200 p-1.5 align-middle text-left w-[150px]' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full text-center bg-transparent font-semibold text-slate-800 focus:bg-white block break-words whitespace-pre-wrap focus:outline-none leading-relaxed', defaultValue: inputs[row.vt] })),
                           e('td', { className: 'border border-slate-200 font-mono text-slate-600 font-semibold' }, row.gc.toFixed(1).replace('.', ',')),
                           e('td', { className: 'border border-slate-200 p-0' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 bg-transparent text-slate-800 font-semibold focus:bg-white focus:outline-none', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
                           e('td', { className: 'border border-slate-200 p-0' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 bg-transparent text-slate-500 focus:bg-white focus:outline-none', value: inputs[row.skh], onChange: ev => handleInputChange('skh_' + row.id, ev.target.value, true) })),
                           e('td', { className: 'border border-slate-200 p-0' }, e('input', { type: 'number', className: 'w-full text-center p-1.5 bg-transparent font-bold text-slate-900 focus:bg-white focus:outline-none', value: inputs[row.sd], onChange: ev => handleInputChange(row.sd, ev.target.value, true) })),
                           e('td', { className: 'border border-slate-200 font-mono font-bold text-slate-800 bg-slate-50/30' }, computed.formatGctt(row.gctt)),
                           e('td', { className: 'border border-slate-200 text-slate-400' }, '0'),
-                          e('td', { className: 'border border-slate-200 p-1.5 align-middle text-left w-[150px]' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full p-0.5 bg-transparent text-slate-600 text-center focus:bg-white focus:outline-none block break-words whitespace-pre-wrap leading-relaxed' }, inputs[row.note])),
+                          e('td', { className: 'border border-slate-200 p-1.5 align-middle text-left w-[150px]' }, e('textarea', { rows: 1, onInput: autoResize, className: 'auto-height w-full p-0.5 bg-transparent text-slate-600 text-center focus:bg-white focus:outline-none block break-words whitespace-pre-wrap leading-relaxed', defaultValue: inputs[row.note] })),
                           e('td', { className: 'border border-slate-200 font-bold text-slate-700 bg-slate-50/10' }, row.tl + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'border border-slate-200 font-bold text-center text-emerald-600 bg-emerald-50/30' }, computed.dapt_dat + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'border border-slate-200 font-bold text-center text-red-600 bg-red-50/30' }, computed.dapt_thieu + '%')
@@ -495,7 +504,10 @@
                   e('div', { className: 'bg-slate-800 border border-slate-700 rounded-lg overflow-hidden shadow-sm flex flex-col justify-between' },
                     e('div', { className: 'bg-slate-900 text-center font-bold p-2 text-slate-300 text-[10px] uppercase tracking-wider flex justify-between items-center px-3 border-b border-slate-700' }, 
                       e('span', { className: 'text-orange-400' }, 'Trích xuất dữ liệu tổng giờ công'),
-                      e('button', { className: 'bg-orange-500 text-white text-[9px] px-2 py-0.5 rounded font-bold hover:bg-orange-600 shadow transition' }, '📋 Copy Dãy Số', { onClick: () => copyToClipboard(computed.allHoursNumbersOnly, 'Đã copy dãy số công!') })
+                      e('button', { 
+                        className: 'bg-orange-500 text-white text-[9px] px-2 py-0.5 rounded font-bold hover:bg-orange-600 shadow transition',
+                        onClick: () => copyToClipboard(computed.allHoursNumbersOnly, 'Đã copy dãy số công!')
+                      }, '📋 Copy Dãy Số')
                     ),
                     e('div', { className: 'p-3 space-y-1.5 font-semibold text-slate-300 divide-y divide-slate-700/50 flex-1 flex flex-col justify-center' },
                       [
@@ -512,9 +524,12 @@
                 e('div', { className: 'bg-white rounded-lg border border-slate-200 shadow-sm p-3 space-y-2' },
                   e('div', { className: 'flex justify-between items-center' },
                     e('span', { className: 'font-bold text-slate-800 text-[10px] uppercase bg-orange-100 border border-orange-200 text-orange-800 px-2 py-0.5 rounded-md' }, '📋 BIỂU MẪU BÁO CÁO CUỐI CA'),
-                    e('button', { className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded text-[10px] transition shadow-sm' }, 'Sao chép văn bản 📑', { onClick: () => copyToClipboard(computed.reportText, 'Đã sao chép nội dung báo cáo!') })
+                    e('button', { 
+                      className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded text-[10px] transition shadow-sm',
+                      onClick: () => copyToClipboard(computed.reportText, 'Đã sao chép nội dung báo cáo!')
+                    }, 'Sao chép văn bản 📑')
                   ),
-                  e('textarea', { className: 'w-full h-40 font-mono p-2 border border-slate-200 rounded-md bg-slate-900 text-emerald-400 text-[11px] focus:outline-none leading-relaxed shadow-inner' }, { readOnly: true, value: computed.reportText })
+                  e('textarea', { className: 'w-full h-40 font-mono p-2 border border-slate-200 rounded-md bg-slate-900 text-emerald-400 text-[11px] focus:outline-none leading-relaxed shadow-inner', readOnly: true, value: computed.reportText })
                 )
               ),
 
