@@ -104,7 +104,6 @@
           return { day: null, month: null, rawDate: dateStr };
         }
 
-        // Component Ô Ghi Chú tự động co giãn chiều cao theo nội dung chữ
         function AutoSizeTextArea({ value, onChange }) {
           const textareaRef = React.useRef(null);
 
@@ -349,8 +348,8 @@
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold text-[9.5px]' }, 
                           [
                             { name: 'Ca làm việc', w: 'w-[7%]' }, 
-                            { name: 'Giờ vào', w: 'w-[3.5%]' }, // Thu nhỏ từ 4.5% xuống 3.5%
-                            { name: 'Giờ ra', w: 'w-[3.5%]' },  // Thu nhỏ từ 4.5% xuống 3.5%
+                            { name: 'Giờ vào', w: 'w-[3%]' },  // Giảm xuống 3%
+                            { name: 'Giờ ra', w: 'w-[3%]' },   // Giảm xuống 3%
                             { name: 'Vị trí', w: 'w-[14%]' }, 
                             { name: 'Giờ Công', w: 'w-[5%]' }, 
                             { name: 'Tổng Nhân Sự', w: 'w-[5%]' }, 
@@ -358,7 +357,7 @@
                             { name: 'Số Đáp Ứng', w: 'w-[4.5%]' },
                             { name: 'Giờ Công Thực Tế', w: 'w-[7%]' }, 
                             { name: 'Thời Gian Bù - Trừ', w: 'w-[4.5%]' }, 
-                            { name: 'Ghi Chú', w: 'w-[36%]' }, // Mở rộng từ 28% lên 36%
+                            { name: 'Ghi Chú', w: 'w-[45%]' },  // Tăng lên 45%
                             { name: 'Tỉ Lệ', w: 'w-[4.5%]' },
                             { name: 'Đáp Ứng Đạt', w: 'w-[5.5%]' }, 
                             { name: 'Đáp Ứng Thiếu', w: 'w-[5.5%]' }
@@ -385,7 +384,6 @@
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 text-black font-bold focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.sd_tns || row.sd], onChange: ev => handleInputChange(row.sd_tns || row.sd, ev.target.value, true) })),
                           e('td', { className: 'p-[2px] text-center text-black font-bold align-middle bg-transparent' }, row.gctt.toFixed(1).replace('.', ',')),
                           e('td', { className: 'p-[2px] text-center align-middle font-bold text-black bg-transparent' }, '0'),
-                          // Thay ô textarea thường bằng Ô Auto-Size co giãn thông minh theo chiều dọc
                           e('td', { className: 'p-1 text-center align-middle' }, e(AutoSizeTextArea, { value: inputs[row.note], onChange: ev => handleNoteChange(row.note, ev) })),
                           e('td', { className: 'p-[2px] text-center font-bold text-black align-middle bg-transparent' }, row.tl + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-[2px] text-center align-middle font-bold text-black text-[11px] bg-transparent' }, computed.dapt_dat + '%'),
