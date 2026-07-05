@@ -234,7 +234,6 @@
 
             const total_fl_skh = i.skh_fl_had + i.skh_fl_viec;
             const total_fl_sdung = i.sdung_fl_had + i.sdung_fl_viec;
-            const tile_fl = total_fl_skh > 0 ? Math.round((total_fl_sdung / total_fl_skh) * 100) : 0;
             const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
             const nang_suat_bao_cao = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
 
@@ -246,7 +245,7 @@
               tile_leader, tile_nsuat, tile_gcong, tile_thuviec, tile_fl_had, tile_fl_viec,
               total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, 
               nang_suat_diem_danh: total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0, 
-              nang_suat_bao_cao, reportText, formatGctt: (val) => val.toFixed(1).replace('.', ','), 
+              nang_suat_bao_cao, reportText, formatGctt: (val) => val.toFixed(1).replace('.', '), 
               dapt_dat: tile_tong, dapt_thieu: tile_tong >= 100 ? 0 : (100 - tile_tong)
             };
           }, [inputs, todayStr]);
@@ -323,17 +322,17 @@
                             { name: 'Ca làm việc', w: 'w-[7%]' }, 
                             { name: 'Giờ vào', w: 'w-[4.5%]' }, 
                             { name: 'Giờ ra', w: 'w-[4.5%]' }, 
-                            { name: 'Vị trí', w: 'w-[15%]' }, 
+                            { name: 'Vị trí', w: 'w-[14%]' }, 
                             { name: 'Giờ Công', w: 'w-[5%]' }, 
-                            { name: 'Tổng NS', w: 'w-[5%]' }, 
-                            { name: 'Số KH', w: 'w-[4.5%]' }, 
-                            { name: 'Số ĐƯ', w: 'w-[4.5%]' },
-                            { name: 'Giờ Công TT', w: 'w-[7%]' }, 
-                            { name: 'Bù Trừ', w: 'w-[4.5%]' }, 
+                            { name: 'Tổng Nhân Sự', w: 'w-[5%]' }, 
+                            { name: 'Số Kế Hoạch', w: 'w-[4.5%]' }, 
+                            { name: 'Số Đáp Ứng', w: 'w-[4.5%]' },
+                            { name: 'Giờ Công Thực Tế', w: 'w-[7%]' }, 
+                            { name: 'Thời Gian Bù - Trừ', w: 'w-[4.5%]' }, 
                             { name: 'Ghi Chú', w: 'w-[28%]' }, 
                             { name: 'Tỉ Lệ', w: 'w-[4.5%]' },
-                            { name: 'ĐƯ Đạt', w: 'w-[5.5%]' }, 
-                            { name: 'ĐƯ Thiếu', w: 'w-[5.5%]' }
+                            { name: 'Đáp Ứng Đạt', w: 'w-[5.5%]' }, 
+                            { name: 'Đáp Ứng Thiếu', w: 'w-[5.5%]' }
                           ].map((h, i) => e('th', { key: i, className: `p-[2px] text-center text-white align-middle font-bold ${h.w}` }, h.name))
                         )
                       ),
@@ -344,7 +343,7 @@
                           { id: 'gcong', vt: 'vt_gcong', v: 'v_gcong', r: 'r_gcong', tns: 'tns_gcong', skh: 'skh_gcong', sd: 'sdung_gcong', note: 'note_gcong', gc: computed.gc_gcong, gctt: computed.gctt_gcong, tl: computed.tile_gcong },
                           { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd_tns: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
                           { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
-                          { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_viec }
+                          { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_had }
                         ].map((row, idx) => e('tr', { key: row.id, className: 'bg-white text-black h-5' },
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-0 text-center align-middle font-bold text-black bg-transparent border-b' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs.ca_chung, onChange: ev => handleInputChange('ca_chung', ev.target.value) })),
                           
