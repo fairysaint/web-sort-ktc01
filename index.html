@@ -314,20 +314,20 @@
                       // CẤU HÌNH COLGROUP: Định hình chuẩn xác tỷ lệ cột cho layout fixed, không sợ bị ô gộp phá vỡ cấu trúc
                       e('colgroup', null,
                         [
-                          'w-[7%]',     // Ca làm việc
+                          'w-[10%]',     // Ca làm việc
                           'w-[3.5%]',   // Giờ vào
                           'w-[3.5%]',   // Giờ ra
-                          'w-[13%]',    // Vị trí
-                          'w-[5%]',     // Giờ công
-                          'w-[5%]',     // Tổng nhân sự
-                          'w-[5%]',     // Số kế hoạch
-                          'w-[5%]',     // Số đáp ứng
-                          'w-[7%]',     // Giờ công thực tế
-                          'w-[4.5%]',   // Thời gian bù trừ
-                          'w-[33%]',    // Ghi chú (Được tăng không gian hiển thị rộng rãi)
-                          'w-[4.5%]',   // Tỉ lệ
-                          'w-[4.5%]',   // Đáp ứng đạt
-                          'w-[4.5%]'    // Đáp ứng thiếu
+'w-[10%]',    // Vị trí
+'w-[5%]',     // Giờ công
+'w-[6%]',     // Tổng nhân sự (Giảm 1% -> còn 6%)
+'w-[5%]',     // Số kế hoạch
+'w-[5%]',     // Số đáp ứng (Giảm 1% -> còn 5%)
+'w-[7%]',     // Giờ công thực tế (Giảm 1% -> còn 7%)
+'w-[4.5%]',   // Thời gian bù trừ
+'w-[23.5%]',  // Ghi chú (Giảm 1.5% -> còn 23.5% vẫn cực kỳ rộng)
+'w-[4.5%]',   // Tỉ lệ
+'w-[6.5%]',   // Đáp ứng đạt
+'w-[6.5%]'    // Đáp ứng thiếu
                         ].map((widthClass, idx) => e('col', { key: idx, className: widthClass }))
                       ),
 
