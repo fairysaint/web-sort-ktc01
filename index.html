@@ -311,7 +311,6 @@
                   e('div', { className: 'w-full min-w-[950px]' },
                     e('table', { className: 'excel-table text-center text-[10px] font-bold bg-white text-black' },
                       
-                      // HỆ THỐNG COLGROUP ĐƯỢC CHUẨN HÓA VỀ ĐÚNG 100% CỦA BẠN
                       e('colgroup', null,
                         [
                           'w-[10%]',     // Ca làm việc
@@ -333,7 +332,8 @@
 
                       e('thead', null, 
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold' }, 
-                          e('th', { colSpan: 11, className: 'p-0.5 text-center text-white font-bold tracking-wider text-[12px] h-6' }, 'ĐIỂM DANH SORT KTC 01'),
+                          // TĂNG SIZE TIÊU ĐỀ: Đổi từ text-[12px] -> text-[15px] h-7 để to rõ ràng hơn
+                          e('th', { colSpan: 11, className: 'p-0.5 text-center text-white font-bold tracking-wider text-[15px] h-7' }, 'ĐIỂM DANH SORT KTC 01'),
                           e('th', { colSpan: 3, className: 'p-0.5 text-center text-white font-bold text-[10px] whitespace-nowrap' }, todayStr)
                         ),
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold text-[9.5px]' }, 
@@ -357,7 +357,8 @@
                           
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
-                          e('td', { className: 'p-0 text-center align-middle text-left pl-1' }, e('input', { type: 'text', className: 'w-full text-left p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
+                          // CĂN GIỮA CỘT VỊ TRÍ: Đổi từ text-left pl-1 sang text-center để đồng nhất giao diện
+                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
                           e('td', { className: 'p-[2px] text-center text-black font-bold align-middle bg-transparent' }, row.gc.toString().replace('.', ',')),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 text-black font-bold focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 text-black font-bold focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.skh], onChange: ev => handleInputChange(row.skh, ev.target.value, true) })),
