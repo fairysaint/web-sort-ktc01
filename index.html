@@ -313,27 +313,13 @@
                       
                       e('colgroup', null,
                         [
-                          'w-[10%]',     // Ca làm việc
-                          'w-[3.5%]',    // Giờ vào
-                          'w-[3.5%]',    // Giờ ra
-                          'w-[10%]',     // Vị trí
-                          'w-[5%]',      // Giờ công
-                          'w-[6%]',      // Tổng nhân sự
-                          'w-[5%]',      // Số kế hoạch
-                          'w-[5%]',      // Số đáp ứng
-                          'w-[7%]',      // Giờ công thực tế
-                          'w-[4.5%]',    // Thời gian bù trừ
-                          'w-[23.5%]',   // Ghi chú
-                          'w-[4.5%]',    // Tỉ lệ
-                          'w-[6.5%]',    // Đáp ứng đạt
-                          'w-[6.5%]'     // Đáp ứng thiếu
+                          'w-[10%]', 'w-[3.5%]', 'w-[3.5%]', 'w-[10%]', 'w-[5%]', 'w-[6%]', 'w-[5%]', 'w-[5%]', 'w-[7%]', 'w-[4.5%]', 'w-[23.5%]', 'w-[4.5%]', 'w-[6.5%]', 'w-[6.5%]'
                         ].map((widthClass, idx) => e('col', { key: idx, className: widthClass }))
                       ),
 
                       e('thead', null, 
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold' }, 
                           e('th', { colSpan: 11, className: 'p-0.5 text-center text-white font-bold tracking-wider text-[15px] h-7' }, 'ĐIỂM DANH SORT KTC 01'),
-                          // ĐỒNG BỘ SIZE CHỮ NGÀY THÁNG: Đổi sang text-[15px] giống tiêu đề
                           e('th', { colSpan: 3, className: 'p-0.5 text-center text-white font-bold text-[15px] h-7 whitespace-nowrap tracking-wide' }, todayStr)
                         ),
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold text-[9.5px]' }, 
@@ -463,14 +449,48 @@
 
               (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-2' },
                 e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 shadow-sm' },
-                  e('div', { className: 'mb-1.5 font-bold text-orange-900 text-[10px] uppercase tracking-wider' }, `📊 THỐNG KÊ SỐ CA THEO THÁNG (TỰ ĐỘNG CẬP NHẬT)`),
+                  // NÂNG CẤP TIÊU ĐỀ: Chỉ rõ tính năng so sánh tăng giảm
+                  e('div', { className: 'mb-1.5 font-bold text-orange-900 text-[10px] uppercase tracking-wider' }, `📊 THỐNG KÊ SỐ CA & ĐÁNH GIÁ TĂNG GIẢM THEO THÁNG`),
                   e('div', { className: 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-center' },
                     activeMonthsWithData.length === 0 ? e('div', { className: 'p-2 text-slate-400 italic col-span-full' }, 'Không có dữ liệu tháng nào.') :
-                    activeMonthsWithData.map(m => {
-                      const count = (activeTab === 'vi-pham' ? violationData : bienbanData).filter(x => x.dateInfo.month === m).length;
-                      return e('div', { key: m, className: 'p-1.5 rounded-lg border border-orange-100 bg-orange-50/40 text-[10px] transition hover:bg-orange-50' },
+                    activeMonthsWithData.map((m, mIdx) => {
+                      const currentSrc = activeTab === 'vi-pham' ? violationData : bienbanData;
+                      const count = currentSrc.filter(x => x.dateInfo.month === m).length;
+                      
+                      // LOGIC TỰ ĐỘNG TÍNH TOÁN TĂNG GIẢM SO VỚI THÁNG TRƯỚC
+                      let trendText = "";
+                      let trendClass = "text-slate-400 font-normal";
+                      
+                      if (mIdx > 0) {
+                        const prevMonth = activeMonthsWithData[mIdx - 1];
+                        const prevCount = currentSrc.filter(x => x.dateInfo.month === prevMonth).length;
+                        
+                        if (prevCount > 0) {
+                          const percentDiff = Math.round(((count - prevCount) / prevCount) * 100);
+                          if (percentDiff > 0) {
+                            trendText = `↑ ${percentDiff}%`;
+                            trendClass = "text-red-500 font-bold"; // Vi phạm tăng hiển thị Đỏ cảnh báo
+                          } else if (percentDiff < 0) {
+                            trendText = `↓ ${Math.abs(percentDiff)}%`;
+                            trendClass = "text-emerald-500 font-bold"; // Vi phạm giảm hiển thị Xanh lá tốt
+                          } else {
+                            trendText = "• Không đổi";
+                            trendClass = "text-slate-500 font-semibold";
+                          }
+                        } else {
+                          trendText = "↑ Khởi tạo";
+                          trendClass = "text-red-400 font-semibold";
+                        }
+                      } else {
+                        trendText = "Tháng cơ sở";
+                        trendClass = "text-slate-400 text-[9px] font-normal italic";
+                      }
+
+                      return e('div', { key: m, className: 'p-1.5 rounded-lg border border-orange-100 bg-orange-50/40 text-[10px] transition hover:bg-orange-50 flex flex-col justify-between min-h-[58px]' },
                         e('div', { className: 'font-bold text-orange-800' }, `Tháng ${m}`),
-                        e('div', { className: 'font-bold text-sm text-slate-800 my-0.5' }, count)
+                        e('div', { className: 'font-bold text-sm text-slate-800 my-0.5' }, `${count} ca`),
+                        // HIỂN THỊ ĐÁNH GIÁ TĂNG GIẢM TỰ ĐỘNG KHÔNG ẢNH HƯỞNG CODE CŨ
+                        e('div', { className: `text-[9.5px] tracking-tight ${trendClass}` }, trendText)
                       );
                     })
                   )
