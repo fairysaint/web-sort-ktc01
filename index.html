@@ -310,6 +310,27 @@
                 e('div', { className: 'bg-white rounded-lg shadow-sm p-0.5 overflow-x-auto' },
                   e('div', { className: 'w-full min-w-[950px]' },
                     e('table', { className: 'excel-table text-center text-[10px] font-bold bg-white text-black' },
+                      
+                      // CẤU HÌNH COLGROUP: Định hình chuẩn xác tỷ lệ cột cho layout fixed, không sợ bị ô gộp phá vỡ cấu trúc
+                      e('colgroup', null,
+                        [
+                          'w-[7%]',     // Ca làm việc
+                          'w-[3.5%]',   // Giờ vào
+                          'w-[3.5%]',   // Giờ ra
+                          'w-[13%]',    // Vị trí
+                          'w-[5%]',     // Giờ công
+                          'w-[5%]',     // Tổng nhân sự
+                          'w-[5%]',     // Số kế hoạch
+                          'w-[5%]',     // Số đáp ứng
+                          'w-[7%]',     // Giờ công thực tế
+                          'w-[4.5%]',   // Thời gian bù trừ
+                          'w-[33%]',    // Ghi chú (Được tăng không gian hiển thị rộng rãi)
+                          'w-[4.5%]',   // Tỉ lệ
+                          'w-[4.5%]',   // Đáp ứng đạt
+                          'w-[4.5%]'    // Đáp ứng thiếu
+                        ].map((widthClass, idx) => e('col', { key: idx, className: widthClass }))
+                      ),
+
                       e('thead', null, 
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold' }, 
                           e('th', { colSpan: 11, className: 'p-0.5 text-center text-white font-bold tracking-wider text-[12px] h-6' }, 'ĐIỂM DANH SORT KTC 01'),
@@ -317,21 +338,10 @@
                         ),
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold text-[9.5px]' }, 
                           [
-                            { name: 'Ca làm việc', w: 'w-[7%]' }, 
-                            { name: 'Giờ vào', w: 'w-[3%]' }, 
-                            { name: 'Giờ ra', w: 'w-[3%]' }, 
-                            { name: 'Vị trí', w: 'w-[14%]' }, 
-                            { name: 'Giờ Công', w: 'w-[5%]' }, 
-                            { name: 'Tổng Nhân Sự', w: 'w-[5%]' }, 
-                            { name: 'Số Kế Hoạch', w: 'w-[4.5%]' }, 
-                            { name: 'Số Đáp Ứng', w: 'w-[4.5%]' },
-                            { name: 'Giờ Công Thực Tế', w: 'w-[7%]' }, 
-                            { name: 'Thời Gian Bù - Trừ', w: 'w-[4.5%]' }, 
-                            { name: 'Ghi Chú', w: 'w-[45%]' }, 
-                            { name: 'Tỉ Lệ', w: 'w-[4.5%]' },
-                            { name: 'Đáp Ứng Đạt', w: 'w-[5.5%]' }, 
-                            { name: 'Đáp Ứng Thiếu', w: 'w-[5.5%]' }
-                          ].map((h, i) => e('th', { key: i, className: `p-[2px] text-center text-white align-middle font-bold ${h.w}` }, h.name))
+                            'Ca làm việc', 'Giờ vào', 'Giờ ra', 'Vị trí', 'Giờ Công', 
+                            'Tổng Nhân Sự', 'Số Kế Hoạch', 'Số Đáp Ứng', 'Giờ Công Thực Tế', 
+                            'Thời Gian Bù - Trừ', 'Ghi Chú', 'Tỉ Lệ', 'Đáp Ứng Đạt', 'Đáp Ứng Thiếu'
+                          ].map((name, i) => e('th', { key: i, className: 'p-[2px] text-center text-white align-middle font-bold' }, name))
                         )
                       ),
                       e('tbody', { className: 'text-black text-[10px]' },
@@ -339,7 +349,7 @@
                           { id: 'leader', vt: 'vt_leader', v: 'v_leader', r: 'r_leader', tns: 'tns_leader', skh: 'skh_leader', sd: 'sdung_leader', note: 'note_leader', gc: computed.gc_leader, gctt: computed.gctt_leader, tl: computed.tile_leader },
                           { id: 'nsuat', vt: 'vt_nsuat', v: 'v_nsuat', r: 'r_nsuat', tns: 'tns_nsuat', skh: 'skh_nsuat', sd: 'sdung_nsuat', note: 'note_nsuat', gc: computed.gc_nsuat, gctt: computed.gctt_nsuat, tl: computed.tile_nsuat },
                           { id: 'gcong', vt: 'vt_gcong', v: 'v_gcong', r: 'r_gcong', tns: 'tns_gcong', skh: 'skh_gcong', sd: 'sdung_gcong', note: 'note_gcong', gc: computed.gc_gcong, gctt: computed.gctt_gcong, tl: computed.tile_gcong },
-                          { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd_tns: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
+                          { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', sd_tns: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
                           { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
                           { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_had }
                         ].map((row, idx) => e('tr', { key: row.id, className: 'bg-white text-black min-h-[20px]' },
@@ -355,7 +365,6 @@
                           e('td', { className: 'p-[2px] text-center text-black font-bold align-middle bg-transparent' }, row.gctt.toFixed(1).replace('.', ',')),
                           e('td', { className: 'p-[2px] text-center align-middle font-bold text-black bg-transparent' }, '0'),
                           
-                          // Sử dụng trực tiếp thẻ textarea nguyên bản kết hợp onInput gán trực tiếp để tránh lỗi đóng gói của GitHub Actions
                           e('td', { className: 'p-1 text-center align-middle' }, e('textarea', {
                             rows: 1,
                             className: 'note-textarea font-bold text-black',
