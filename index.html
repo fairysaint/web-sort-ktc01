@@ -27,9 +27,10 @@
             white-space: pre-wrap;
             text-align: center;
             font-size: 10px;
-            line-height: 1.2;
+            line-height: 1.3;
             width: 100%;
             border: none;
+            display: block;
         }
         .note-textarea:focus {
             outline: none;
@@ -101,6 +102,34 @@
             return { day: d, month: m, rawDate: dStr };
           }
           return { day: null, month: null, rawDate: dateStr };
+        }
+
+        // Component Ô Ghi Chú tự động co giãn chiều cao theo nội dung chữ
+        function AutoSizeTextArea({ value, onChange }) {
+          const textareaRef = React.useRef(null);
+
+          const adjustHeight = () => {
+            const textarea = textareaRef.current;
+            if (textarea) {
+              textarea.style.height = 'auto';
+              textarea.style.height = textarea.scrollHeight + 'px';
+            }
+          };
+
+          React.useEffect(() => {
+            adjustHeight();
+          }, [value]);
+
+          return e('textarea', {
+            ref: textareaRef,
+            rows: 1,
+            className: 'note-textarea font-bold text-black',
+            value: value,
+            onChange: (ev) => {
+              onChange(ev);
+              adjustHeight();
+            }
+          });
         }
 
         function App() {
@@ -310,7 +339,7 @@
 
               activeTab === 'report-daily' && e('div', { className: 'space-y-2' },
                 e('div', { className: 'bg-white rounded-lg shadow-sm p-0.5 overflow-x-auto' },
-                  e('div', { className: 'w-full min-w-[900px]' },
+                  e('div', { className: 'w-full min-w-[950px]' },
                     e('table', { className: 'excel-table text-center text-[10px] font-bold bg-white text-black' },
                       e('thead', null, 
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold' }, 
@@ -320,8 +349,8 @@
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold text-[9.5px]' }, 
                           [
                             { name: 'Ca làm việc', w: 'w-[7%]' }, 
-                            { name: 'Giờ vào', w: 'w-[4.5%]' }, 
-                            { name: 'Giờ ra', w: 'w-[4.5%]' }, 
+                            { name: 'Giờ vào', w: 'w-[3.5%]' }, // Thu nhỏ từ 4.5% xuống 3.5%
+                            { name: 'Giờ ra', w: 'w-[3.5%]' },  // Thu nhỏ từ 4.5% xuống 3.5%
                             { name: 'Vị trí', w: 'w-[14%]' }, 
                             { name: 'Giờ Công', w: 'w-[5%]' }, 
                             { name: 'Tổng Nhân Sự', w: 'w-[5%]' }, 
@@ -329,7 +358,7 @@
                             { name: 'Số Đáp Ứng', w: 'w-[4.5%]' },
                             { name: 'Giờ Công Thực Tế', w: 'w-[7%]' }, 
                             { name: 'Thời Gian Bù - Trừ', w: 'w-[4.5%]' }, 
-                            { name: 'Ghi Chú', w: 'w-[28%]' }, 
+                            { name: 'Ghi Chú', w: 'w-[36%]' }, // Mở rộng từ 28% lên 36%
                             { name: 'Tỉ Lệ', w: 'w-[4.5%]' },
                             { name: 'Đáp Ứng Đạt', w: 'w-[5.5%]' }, 
                             { name: 'Đáp Ứng Thiếu', w: 'w-[5.5%]' }
@@ -344,7 +373,7 @@
                           { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', skh: 'skh_thuviec', sd_tns: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
                           { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
                           { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_had }
-                        ].map((row, idx) => e('tr', { key: row.id, className: 'bg-white text-black h-5' },
+                        ].map((row, idx) => e('tr', { key: row.id, className: 'bg-white text-black min-h-[20px]' },
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-0 text-center align-middle font-bold text-black bg-transparent border-b' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs.ca_chung, onChange: ev => handleInputChange('ca_chung', ev.target.value) })),
                           
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
@@ -356,7 +385,8 @@
                           e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 text-black font-bold focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.sd_tns || row.sd], onChange: ev => handleInputChange(row.sd_tns || row.sd, ev.target.value, true) })),
                           e('td', { className: 'p-[2px] text-center text-black font-bold align-middle bg-transparent' }, row.gctt.toFixed(1).replace('.', ',')),
                           e('td', { className: 'p-[2px] text-center align-middle font-bold text-black bg-transparent' }, '0'),
-                          e('td', { className: 'p-0 text-center align-middle px-1' }, e('textarea', { rows: 1, className: 'note-textarea font-bold text-black', value: inputs[row.note], onChange: ev => handleNoteChange(row.note, ev) })),
+                          // Thay ô textarea thường bằng Ô Auto-Size co giãn thông minh theo chiều dọc
+                          e('td', { className: 'p-1 text-center align-middle' }, e(AutoSizeTextArea, { value: inputs[row.note], onChange: ev => handleNoteChange(row.note, ev) })),
                           e('td', { className: 'p-[2px] text-center font-bold text-black align-middle bg-transparent' }, row.tl + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-[2px] text-center align-middle font-bold text-black text-[11px] bg-transparent' }, computed.dapt_dat + '%'),
                           idx === 0 && e('td', { rowSpan: 6, className: 'p-[2px] text-center align-middle font-bold text-black text-[11px] bg-transparent' }, computed.dapt_thieu + '%')
