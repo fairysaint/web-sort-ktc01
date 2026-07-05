@@ -245,7 +245,7 @@
               tile_leader, tile_nsuat, tile_gcong, tile_thuviec, tile_fl_had, tile_fl_viec,
               total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, 
               nang_suat_diem_danh: total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0, 
-              nang_suat_bao_cao, reportText, formatGctt: (val) => val.toFixed(1).replace('.', '), 
+              nang_suat_bao_cao, reportText, formatGctt: (val) => val.toFixed(1).replace('.', ','), 
               dapt_dat: tile_tong, dapt_thieu: tile_tong >= 100 ? 0 : (100 - tile_tong)
             };
           }, [inputs, todayStr]);
