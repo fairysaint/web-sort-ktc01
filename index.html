@@ -122,7 +122,7 @@
           const [inputs, setInputs] = React.useState({
             ca_chung: '07:00-16:00',
             vt_leader: 'Leader', v_leader: '07:30', r_leader: '16:30', tns_leader: 3, skh_leader: 3, sdung_leader: 3, note_leader: '',
-            vt_nsuat: 'NV Năng suất', v_nsuat: '07:00', r_nsuat: '16:30', tns_nsuat: 39, skh_nsuat: 32, sdung_nsuat: 33, note_nsuat: '1 nhân viên mới',
+            vt_nsuat: 'NV Năng suất', v_nsuat: '07:00', r_nsuat: '16:30', tns_nsuat: 39, skh_nsuat: 32, sdung_nsuat: 33, note_nsuat: '',
             vt_gcong: 'NV Giờ công', v_gcong: '07:00', r_gcong: '17:30', tns_gcong: 2, skh_gcong: 2, sdung_gcong: 2, note_gcong: '',
             vt_thuviec: 'Nhân viên thử việc', v_thuviec: '07:30', r_thuviec: '16:30', tns_thuviec: 0, skh_thuviec: 0, sdung_thuviec: 0, note_thuviec: '',
             vt_fl_had: 'FL - Hoa Anh Đào', v_fl_had: '08:00', r_fl_had: '17:00', tns_fl_had: 0, skh_fl_had: 0, sdung_fl_had: 0, note_fl_had: '',
@@ -239,8 +239,7 @@
             const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
             const nang_suat_bao_cao = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
 
-            const reportText = `${todayStr}\nBáo cáo cuối ca Sort (07:30-16:30) KTC HCM 01\n\n1/ Lượng hàng.\na. Forecast (đơn): ${i.forecast.toLocaleString()}\nb. Act (đơn): ${act_don.toLocaleString()}\n\n2/ Nhân sự.\na. Nhân viên năng suất: ${tile_nsuat}% ${i.sdung_nsuat}/${i.skh_nsuat}\nb. Nhân viên giờ công: ${tile_gcong}% ${i.sdung_gcong}/${i.skh_gcong}\nc. Freelancer: ${tile_fl}% ${total_fl_sdung}/${total_fl_skh}\nTổng đáp ứng nhân sự: ${tile_tong}%\n\n3/ Năng suất: ${nang_suat_bao_cao} đơn/h\n\n4/ Hàng hóa:\nData ghi nhận : ${todayStr} 16:30:00\na. Hàng nhận chờ rã (đơn): ${i.hang_cho_ra} đơn\n- Hàng liên vùng trước mốc bàn giao 15:00: ${i.hang_lien_vung} đơn\n- Hàng nội vùng trước mốc bàn giao 16:00: ${i.hang_noi_vung} đơn\nb. Hàng sort đã xử lý:\n- Trạng thái khởi tạo chờ xuất ${i.hang_cho_xuat} đơn\n\n5/ Phát sinh trong ca:\n- ${i.phat_sinh}`;
-            const allHoursNumbersOnly = `${gctt_leader.toFixed(1).replace('.', ',')}\n${gctt_nsuat.toFixed(1).replace('.', ',')}\n${gctt_gcong.toFixed(1).replace('.', ',')}\n${(gctt_fl_had + gctt_fl_viec).toFixed(1).replace('.', ',')}`;
+            const reportText = `${todayStr}\nBáo cáo cuối ca Sort KTC HCM 01\n\n1/ Lượng hàng.\na. Forecast: ${i.forecast.toLocaleString()}\nb. Act: ${act_don.toLocaleString()}\n\n2/ Nhân sự.\nĐáp ứng nhân sự: ${tile_tong}%\n\n3/ Năng suất: ${nang_suat_bao_cao} đơn/h`;
 
             return {
               gc_leader, gc_nsuat, gc_gcong, gc_thuviec, gc_fl_had, gc_fl_viec,
@@ -249,7 +248,7 @@
               total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, 
               nang_suat_diem_danh: total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0, 
               nang_suat_bao_cao, reportText, formatGctt: (val) => val.toFixed(1).replace('.', ','), 
-              allHoursNumbersOnly, dapt_dat: tile_tong, dapt_thieu: tile_tong >= 100 ? (100 - tile_tong) : (100 - tile_tong)
+              dapt_dat: tile_tong, dapt_thieu: tile_tong >= 100 ? 0 : (100 - tile_tong)
             };
           }, [inputs, todayStr]);
 
@@ -320,7 +319,6 @@
                           e('th', { colSpan: 11, className: 'p-1 text-center text-white font-bold tracking-wider text-[13px] h-7' }, 'ĐIỂM DANH SORT KTC 01'),
                           e('th', { colSpan: 3, className: 'p-1 text-center text-white font-bold text-[11px] whitespace-nowrap' }, todayStr)
                         ),
-                        // Cập nhật chuẩn xác 100% tên cột theo ảnh mẫu
                         e('tr', { className: 'bg-[#ff7300] text-white font-bold text-[10px]' }, 
                           [
                             { name: 'Ca làm việc', w: 'w-[7.5%]' }, 
