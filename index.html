@@ -268,6 +268,99 @@
             });
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
 
+          // TÍNH TOÁN DỮ LIỆU ĐÁNH GIÁ CHI TIẾT TỪNG THÁNG CHO TAB VI PHẠM / BIÊN BẢN
+          const monthlyStats = React.useMemo(() => {
+            const currentSrc = activeTab === 'vi-pham' ? violationData : bienbanData;
+            let statsMap = {};
+
+            activeMonthsWithData.forEach((m, mIdx) => {
+              const monthData = currentSrc.filter(x => x.dateInfo.month === m);
+              const count = monthData.length;
+
+              // 1. Tính toán Xu hướng tăng/giảm so với tháng trước
+              let trendText = "Tháng cơ sở";
+              let trendClass = "text-slate-400 font-normal italic";
+              if (mIdx > 0) {
+                const prevMonth = activeMonthsWithData[mIdx - 1];
+                const prevCount = currentSrc.filter(x => x.dateInfo.month === prevMonth).length;
+                if (prevCount > 0) {
+                  const percentDiff = Math.round(((count - prevCount) / prevCount) * 100);
+                  if (percentDiff > 0) {
+                    trendText = `↑ Tăng ${percentDiff}%`;
+                    trendClass = "text-red-500 font-bold";
+                  } else if (percentDiff < 0) {
+                    trendText = `↓ Giảm ${Math.abs(percentDiff)}%`;
+                    trendClass = "text-emerald-500 font-bold";
+                  } else {
+                    trendText = "• Không đổi";
+                    trendClass = "text-slate-500 font-semibold";
+                  }
+                } else {
+                  trendText = "↑ Khởi tạo";
+                  trendClass = "text-red-400 font-semibold";
+                }
+              }
+
+              // 2. Tìm ngày có nhiều lỗi nhất trong tháng
+              let maxDayStr = "N/A";
+              let maxDayCount = 0;
+              if (count > 0) {
+                const dayCounts = {};
+                monthData.forEach(item => {
+                  const dateStr = (item.time || item.date || "").split(' ')[0];
+                  if (dateStr) {
+                    dayCounts[dateStr] = (dayCounts[dateStr] || 0) + 1;
+                  }
+                });
+                let bestDay = "";
+                let maxVal = 0;
+                Object.keys(dayCounts).forEach(day => {
+                  if (dayCounts[day] > maxVal) {
+                    maxVal = dayCounts[day];
+                    bestDay = day;
+                  }
+                });
+                // Rút gọn ngày (vd: 12/05/2026 -> 12/05)
+                if (bestDay.includes('/')) {
+                  const p = bestDay.split('/');
+                  maxDayStr = `${p[0]}/${p[1]}`;
+                } else {
+                  maxDayStr = bestDay;
+                }
+                maxDayCount = maxVal;
+              }
+
+              // 3. Top các lỗi vi phạm phổ biến (Top 3)
+              let topErrors = [];
+              if (count > 0) {
+                const errorCounts = {};
+                monthData.forEach(item => {
+                  const content = (activeTab === 'vi-pham' ? item.error : item.content) || "Không xác định";
+                  // Gộp nhóm gần tương đồng
+                  const cleanContent = content.trim();
+                  errorCounts[cleanContent] = (errorCounts[cleanContent] || 0) + 1;
+                });
+                const sortedErrors = Object.keys(errorCounts).map(err => ({
+                  name: err,
+                  qty: errorCounts[err]
+                })).sort((a, b) => b.qty - a.qty);
+
+                topErrors = sortedErrors.slice(0, 3);
+              }
+
+              statsMap[m] = {
+                count,
+                trendText,
+                trendClass,
+                maxDayStr,
+                maxDayCount,
+                topErrors
+              };
+            });
+
+            return statsMap;
+          }, [activeTab, violationData, bienbanData, activeMonthsWithData]);
+
           return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
             e('header', { className: 'bg-[#ff7300] text-white p-2 flex justify-between items-center shadow-md' },
               e('h1', { className: 'text-xs font-bold tracking-wider uppercase' }, 'SORT KTC 01 OPERATIONAL CENTER'),
@@ -449,48 +542,47 @@
 
               (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-2' },
                 e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 shadow-sm' },
-                  // NÂNG CẤP TIÊU ĐỀ: Chỉ rõ tính năng so sánh tăng giảm
-                  e('div', { className: 'mb-1.5 font-bold text-orange-900 text-[10px] uppercase tracking-wider' }, `📊 THỐNG KÊ SỐ CA & ĐÁNH GIÁ TĂNG GIẢM THEO THÁNG`),
-                  e('div', { className: 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-center' },
-                    activeMonthsWithData.length === 0 ? e('div', { className: 'p-2 text-slate-400 italic col-span-full' }, 'Không có dữ liệu tháng nào.') :
-                    activeMonthsWithData.map((m, mIdx) => {
-                      const currentSrc = activeTab === 'vi-pham' ? violationData : bienbanData;
-                      const count = currentSrc.filter(x => x.dateInfo.month === m).length;
+                  // TIÊU ĐỀ NÂNG CẤP PHÂN TÍCH CHUYÊN SÂU
+                  e('div', { className: 'mb-2 font-bold text-orange-950 text-[11px] uppercase tracking-wider border-b pb-1.5 border-orange-100 flex justify-between items-center' }, 
+                    e('span', null, `📊 THỐNG KÊ BIẾN ĐỘNG & ĐÁNH GIÁ CHẤT LƯỢNG CA VẬN HÀNH`),
+                    e('span', { className: 'text-[9.5px] font-normal text-slate-500 italic uppercase' }, `Tự động cập nhật`)
+                  ),
+                  // CARD THỐNG KÊ PHÂN TÍCH TỪNG THÁNG
+                  e('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5' },
+                    activeMonthsWithData.length === 0 ? e('div', { className: 'p-4 text-slate-400 italic col-span-full' }, 'Không tìm thấy dữ liệu tháng.') :
+                    activeMonthsWithData.map(m => {
+                      const stat = monthlyStats[m] || { count: 0, trendText: "", trendClass: "", maxDayStr: "N/A", maxDayCount: 0, topErrors: [] };
                       
-                      // LOGIC TỰ ĐỘNG TÍNH TOÁN TĂNG GIẢM SO VỚI THÁNG TRƯỚC
-                      let trendText = "";
-                      let trendClass = "text-slate-400 font-normal";
-                      
-                      if (mIdx > 0) {
-                        const prevMonth = activeMonthsWithData[mIdx - 1];
-                        const prevCount = currentSrc.filter(x => x.dateInfo.month === prevMonth).length;
+                      return e('div', { key: m, className: 'p-2 rounded-lg border border-orange-100 bg-orange-50/20 text-[10.5px] transition hover:bg-orange-50 flex flex-col justify-between space-y-1.5 shadow-sm' },
+                        // Phần Header Card Tháng
+                        e('div', { className: 'flex justify-between items-center border-b border-orange-100/50 pb-1' },
+                          e('div', { className: 'font-bold text-orange-900 text-xs' }, `Tháng ${m}`),
+                          e('span', { className: `text-[10px] ${stat.trendClass}` }, stat.trendText)
+                        ),
                         
-                        if (prevCount > 0) {
-                          const percentDiff = Math.round(((count - prevCount) / prevCount) * 100);
-                          if (percentDiff > 0) {
-                            trendText = `↑ ${percentDiff}%`;
-                            trendClass = "text-red-500 font-bold"; // Vi phạm tăng hiển thị Đỏ cảnh báo
-                          } else if (percentDiff < 0) {
-                            trendText = `↓ ${Math.abs(percentDiff)}%`;
-                            trendClass = "text-emerald-500 font-bold"; // Vi phạm giảm hiển thị Xanh lá tốt
-                          } else {
-                            trendText = "• Không đổi";
-                            trendClass = "text-slate-500 font-semibold";
-                          }
-                        } else {
-                          trendText = "↑ Khởi tạo";
-                          trendClass = "text-red-400 font-semibold";
-                        }
-                      } else {
-                        trendText = "Tháng cơ sở";
-                        trendClass = "text-slate-400 text-[9px] font-normal italic";
-                      }
+                        // Chi tiết số liệu
+                        e('div', { className: 'space-y-1 font-bold' },
+                          e('div', { className: 'flex justify-between items-center text-slate-700' },
+                            e('span', null, 'Tổng số ca:'),
+                            e('span', { className: 'text-sm text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-100' }, `${stat.count} vụ`)
+                          ),
+                          e('div', { className: 'flex justify-between items-center text-slate-700' },
+                            e('span', null, 'Ngày đỉnh điểm:'),
+                            e('span', { className: 'text-red-600 font-bold bg-red-50 px-1 py-0.5 rounded border border-red-100 text-[10px]' }, 
+                              stat.maxDayCount > 0 ? `${stat.maxDayStr} (${stat.maxDayCount} ca)` : 'Không có'
+                            )
+                          )
+                        ),
 
-                      return e('div', { key: m, className: 'p-1.5 rounded-lg border border-orange-100 bg-orange-50/40 text-[10px] transition hover:bg-orange-50 flex flex-col justify-between min-h-[58px]' },
-                        e('div', { className: 'font-bold text-orange-800' }, `Tháng ${m}`),
-                        e('div', { className: 'font-bold text-sm text-slate-800 my-0.5' }, `${count} ca`),
-                        // HIỂN THỊ ĐÁNH GIÁ TĂNG GIẢM TỰ ĐỘNG KHÔNG ẢNH HƯỞNG CODE CŨ
-                        e('div', { className: `text-[9.5px] tracking-tight ${trendClass}` }, trendText)
+                        // List lỗi phổ biến
+                        e('div', { className: 'mt-1 pt-1 border-t border-orange-100/50 space-y-1' },
+                          e('div', { className: 'text-[9.5px] text-slate-500 font-bold uppercase tracking-wider' }, 'Lỗi phổ biến nhất:'),
+                          stat.topErrors.length === 0 ? e('div', { className: 'text-[9px] text-slate-400 italic' }, 'Không ghi nhận') :
+                          stat.topErrors.map((err, errIdx) => e('div', { key: errIdx, className: 'flex justify-between items-start gap-2 bg-white/70 p-1 rounded text-[9.5px] border border-orange-50 font-bold text-slate-800' },
+                            e('span', { className: 'truncate max-w-[130px]', title: err.name }, `${errIdx + 1}. ${err.name}`),
+                            e('span', { className: 'text-orange-600 bg-orange-50 px-1 rounded flex-shrink-0' }, `${err.qty} lần`)
+                          ))
+                        )
                       );
                     })
                   )
