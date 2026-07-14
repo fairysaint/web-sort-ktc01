@@ -542,25 +542,21 @@
 
               (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-2' },
                 e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 shadow-sm' },
-                  // TIÊU ĐỀ NÂNG CẤP PHÂN TÍCH CHUYÊN SÂU
                   e('div', { className: 'mb-2 font-bold text-orange-950 text-[11px] uppercase tracking-wider border-b pb-1.5 border-orange-100 flex justify-between items-center' }, 
                     e('span', null, `📊 THỐNG KÊ BIẾN ĐỘNG & ĐÁNH GIÁ CHẤT LƯỢNG CA VẬN HÀNH`),
                     e('span', { className: 'text-[9.5px] font-normal text-slate-500 italic uppercase' }, `Tự động cập nhật`)
                   ),
-                  // CARD THỐNG KÊ PHÂN TÍCH TỪNG THÁNG
                   e('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5' },
                     activeMonthsWithData.length === 0 ? e('div', { className: 'p-4 text-slate-400 italic col-span-full' }, 'Không tìm thấy dữ liệu tháng.') :
                     activeMonthsWithData.map(m => {
                       const stat = monthlyStats[m] || { count: 0, trendText: "", trendClass: "", maxDayStr: "N/A", maxDayCount: 0, topErrors: [] };
                       
                       return e('div', { key: m, className: 'p-2 rounded-lg border border-orange-100 bg-orange-50/20 text-[10.5px] transition hover:bg-orange-50 flex flex-col justify-between space-y-1.5 shadow-sm' },
-                        // Phần Header Card Tháng
                         e('div', { className: 'flex justify-between items-center border-b border-orange-100/50 pb-1' },
                           e('div', { className: 'font-bold text-orange-900 text-xs' }, `Tháng ${m}`),
                           e('span', { className: `text-[10px] ${stat.trendClass}` }, stat.trendText)
                         ),
                         
-                        // Chi tiết số liệu
                         e('div', { className: 'space-y-1 font-bold' },
                           e('div', { className: 'flex justify-between items-center text-slate-700' },
                             e('span', null, 'Tổng số ca:'),
@@ -574,7 +570,6 @@
                           )
                         ),
 
-                        // List lỗi phổ biến
                         e('div', { className: 'mt-1 pt-1 border-t border-orange-100/50 space-y-1' },
                           e('div', { className: 'text-[9.5px] text-slate-500 font-bold uppercase tracking-wider' }, 'Lỗi phổ biến nhất:'),
                           stat.topErrors.length === 0 ? e('div', { className: 'text-[9px] text-slate-400 italic' }, 'Không ghi nhận') :
@@ -601,13 +596,23 @@
                     e('table', { className: 'w-full text-center text-[11px] border-collapse' },
                       e('thead', { className: 'bg-orange-50/40 font-bold border-b border-orange-100 text-orange-900 uppercase text-[10px] tracking-tight' }, 
                         e('tr', null, 
-                          e('th', { className: 'p-2 w-20' }, 'Ngày tháng'), e('th', { className: 'p-2 w-28' }, activeTab === 'vi-pham' ? 'Mã nhân viên' : 'Tài khoản (User)'), e('th', { className: 'p-2 w-36' }, 'Họ Tên Nhân Viên'), e('th', { className: 'p-2 text-left pl-3' }, activeTab === 'vi-pham' ? 'Chi Tiết Nội Dung Vi Phạm' : 'Nội Dung Biên Bản Ghi Nhận')
+                          e('th', { className: 'p-2 w-[12%]' }, 'Ngày tháng'), 
+                          e('th', { className: 'p-2 w-[11%]' }, activeTab === 'vi-pham' ? 'Mã nhân viên' : 'Tài khoản (User)'), 
+                          e('th', { className: 'p-2 w-[14%]' }, 'Họ Tên Nhân Viên'), 
+                          e('th', { className: 'p-2 text-left pl-3 w-[33%]' }, activeTab === 'vi-pham' ? 'Chi Tiết Nội Dung Vi Phạm' : 'Nội Dung Biên Bản Ghi Nhận'),
+                          e('th', { className: 'p-2 w-[15%]' }, 'User ID'),
+                          e('th', { className: 'p-2 w-[15%]' }, activeTab === 'vi-pham' ? 'Người Báo Cáo' : 'Người Tạo')
                         )
                       ),
                       e('tbody', null, 
-                        filteredRawData.length === 0 ? e('tr', null, e('td', { colSpan: 4, className: 'p-4 text-slate-400 italic bg-slate-50/10' }, 'Không tìm thấy thông tin phù hợp với điều kiện bộ lọc.')) :
+                        filteredRawData.length === 0 ? e('tr', null, e('td', { colSpan: 6, className: 'p-4 text-slate-400 italic bg-slate-50/10' }, 'Không tìm thấy thông tin phù hợp với điều kiện bộ lọc.')) :
                         filteredRawData.map(v => e('tr', { key: v.id, className: 'border-t border-orange-50 hover:bg-orange-50/10 transition font-bold' }, 
-                          e('td', { className: 'p-2 text-slate-500' }, v.time || v.date), e('td', { className: 'p-2 text-red-600' }, activeTab === 'vi-pham' ? v.code : v.username), e('td', { className: 'p-2 text-slate-800' }, v.name), e('td', { className: 'p-2 text-slate-600 text-left pl-3 max-w-xl break-words whitespace-pre-wrap leading-relaxed font-bold' }, activeTab === 'vi-pham' ? v.error : v.content)
+                          e('td', { className: 'p-2 text-slate-500' }, v.time || v.date), 
+                          e('td', { className: 'p-2 text-red-600' }, activeTab === 'vi-pham' ? v.code : v.username), 
+                          e('td', { className: 'p-2 text-slate-800' }, v.name), 
+                          e('td', { className: 'p-2 text-slate-600 text-left pl-3 max-w-xl break-words whitespace-pre-wrap leading-relaxed font-bold' }, activeTab === 'vi-pham' ? v.error : v.content),
+                          e('td', { className: 'p-2 text-slate-600 font-mono text-[10px]' }, v.userId || 'N/A'),
+                          e('td', { className: 'p-2 text-orange-800 font-semibold' }, activeTab === 'vi-pham' ? (v.reporter || 'Hệ thống') : (v.creator || 'Hệ thống'))
                         ))
                       )
                     )
