@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Điều Hành Sort KTC 01</title>
-    <link rel="icon" href="data:,"> <!-- Sửa lỗi favicon 404 -->
+    <link rel="icon" href="data:,">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -48,6 +48,7 @@
     <script>
         const SPREADSHEET_ID = "2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv";
         
+        // Cấu hình URL chuẩn (dùng & thay vì ? nếu đã có tham số gid)
         const URL_LICH_LAM_VIEC = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=594239313&output=csv`;
         const URL_VI_PHAM       = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=0&output=csv`;
         const URL_BIEN_BAN      = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=735999237&output=csv`;
@@ -137,17 +138,17 @@
             phat_sinh: 'Không'
           });
 
-          // TẢI DỮ LIỆU SONG SONG VỚI DẤU & CHUẨN URL
-          const loadAllData = React.useCallback(async () => {
+          // TẢI DỮ LIỆU TỐC ĐỘ CAO (Mặc định dùng Cache)
+          const loadAllData = React.useCallback(async (forceRefresh = false) => {
             try {
               setIsLoading(true);
-              // Sửa dấu ? thành dấu & để nối tham số hợp lệ
-              const cacheBuster = `&t=${Date.now()}`;
+              // Chỉ thêm timestamp khi bấm ép buộc tải lại
+              const queryParam = forceRefresh ? `&t=${Date.now()}` : '';
 
               const [resLich, resVi, resBb] = await Promise.all([
-                fetch(URL_LICH_LAM_VIEC + cacheBuster),
-                fetch(URL_VI_PHAM + cacheBuster),
-                fetch(URL_BIEN_BAN + cacheBuster)
+                fetch(URL_LICH_LAM_VIEC + queryParam),
+                fetch(URL_VI_PHAM + queryParam),
+                fetch(URL_BIEN_BAN + queryParam)
               ]);
 
               const [textLich, textVi, textBb] = await Promise.all([
@@ -213,7 +214,7 @@
           }, []);
 
           React.useEffect(() => {
-            loadAllData();
+            loadAllData(false); // Lần đầu mở trang dùng cache để tải tức thì
           }, [loadAllData]);
 
           const handleInputChange = (key, value, isNum = false) => {
@@ -396,9 +397,9 @@
               e('div', { className: 'flex items-center gap-2' },
                 e('button', { 
                   className: 'text-[10px] font-bold bg-white text-orange-700 px-2 py-0.5 rounded shadow hover:bg-orange-100 transition active:scale-95', 
-                  onClick: loadAllData 
-                }, isLoading ? '⏳ Đang tải...' : '🔄 Tải lại dữ liệu'),
-                e('span', { className: 'text-[10px] font-mono bg-orange-700/40 px-1.5 py-0.5 rounded text-white border border-orange-400/30' }, 'v2.2 Fixed URL')
+                  onClick: () => loadAllData(true) // Bấm nút mới ép buộc tải lại mới nhất
+                }, isLoading ? '⏳ Đang tải...' : '⚡ Ép tải lại mới nhất'),
+                e('span', { className: 'text-[10px] font-mono bg-orange-700/40 px-1.5 py-0.5 rounded text-white border border-orange-400/30' }, 'v2.3 Fast Cache')
               )
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-500 text-center text-[11px] overflow-x-auto shadow-sm' },
@@ -413,7 +414,7 @@
                 e('div', { className: 'flex flex-wrap justify-between items-center border-b border-orange-50 pb-1.5 gap-2' },
                   e('div', { className: 'flex items-center gap-2' },
                     e('h2', { className: 'font-bold text-xs text-orange-800 uppercase tracking-wide' }, 'Lịch Trực Ban Ca'),
-                    isLoading && e('span', { className: 'text-[10px] text-orange-600 font-bold animate-pulse' }, '(Đang tải lại dữ liệu từ Google...)')
+                    isLoading && e('span', { className: 'text-[10px] text-orange-600 font-bold animate-pulse' }, '(Đang đồng bộ dữ liệu...)')
                   ),
                   
                   e('div', { className: 'flex items-center gap-2 bg-orange-50 p-1 rounded border border-orange-100 text-[10px]' },
