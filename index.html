@@ -47,28 +47,33 @@
 
     <script>
         const SPREADSHEET_ID = "2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv";
-        
-        // Cấu hình URL chuẩn (dùng & thay vì ? nếu đã có tham số gid)
         const URL_LICH_LAM_VIEC = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=594239313&output=csv`;
         const URL_VI_PHAM       = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=0&output=csv`;
         const URL_BIEN_BAN      = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=735999237&output=csv`;
 
         const e = React.createElement;
 
+        // Tối ưu hóa thuật toán Parse CSV
         function parseCSV(text) {
           if (!text) return [];
-          let lines = text.split(/\r\n|\n/);
-          return lines.map(line => {
-            let result = []; let current = ''; let inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-              let char = line[i];
+          const lines = text.split(/\r\n|\n/);
+          const result = [];
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line) continue;
+            const row = [];
+            let current = '';
+            let inQuotes = false;
+            for (let j = 0; j < line.length; j++) {
+              const char = line[j];
               if (char === '"') { inQuotes = !inQuotes; }
-              else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+              else if (char === ',' && !inQuotes) { row.push(current.trim()); current = ''; }
               else { current += char; }
             }
-            result.push(current.trim());
-            return result;
-          }).filter(row => row.length > 0);
+            row.push(current.trim());
+            result.push(row);
+          }
+          return result;
         }
 
         function timeToHours(tStr) {
@@ -81,22 +86,20 @@
           const today = new Date();
           const dd = String(today.getDate()).padStart(2, '0');
           const mm = String(today.getMonth() + 1).padStart(2, '0');
-          const yyyy = today.getFullYear();
-          return `${dd}/${mm}/${yyyy}`;
+          return `${dd}/${mm}/${today.getFullYear()}`;
         }
 
         function parseDateDetails(dateStr) {
           if (!dateStr) return { day: null, month: null, rawDate: "" };
-          let cleanStr = dateStr.split(' ')[0];
+          const cleanStr = dateStr.split(' ')[0];
           let parts = [];
           if (cleanStr.includes('/')) parts = cleanStr.split('/');
           else if (cleanStr.includes('-')) parts = cleanStr.split('-');
           
           if (parts.length >= 2) {
-            let d = parts[0].length <= 2 ? parseInt(parts[0], 10) : parseInt(parts[2], 10);
-            let m = parseInt(parts[1], 10);
-            let dStr = String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0');
-            return { day: d, month: m, rawDate: dStr };
+            const d = parts[0].length <= 2 ? parseInt(parts[0], 10) : parseInt(parts[2], 10);
+            const m = parseInt(parts[1], 10);
+            return { day: d, month: m, rawDate: String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0') };
           }
           return { day: null, month: null, rawDate: dateStr };
         }
@@ -104,9 +107,7 @@
         function parseDDMMYYYY(dateStr) {
           if (!dateStr) return null;
           const parts = dateStr.split('/');
-          if (parts.length === 3) {
-            return new Date(parts[2], parts[1] - 1, parts[0]);
-          }
+          if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
           return null;
         }
 
@@ -134,17 +135,27 @@
             vt_fl_had: 'FL - Hoa Anh Đào', v_fl_had: '08:00', r_fl_had: '17:00', tns_fl_had: 0, skh_fl_had: 0, sdung_fl_had: 0, note_fl_had: '',
             vt_fl_viec: 'FL - Viecco', v_fl_viec: '08:00', r_fl_viec: '17:00', tns_fl_viec: 0, skh_fl_viec: 0, sdung_fl_viec: 0, note_fl_viec: '',
             feeder_cbs1: 19701, feeder_cbs2: 37422, tron_lan: 1000, forecast: 65000,
-            hang_cho_ra: 2990, hang_cho_xuat: 40892, hang_lien_vung: 0, hang_noi_vung: 0,
             phat_sinh: 'Không'
           });
 
-          // TẢI DỮ LIỆU TỐC ĐỘ CAO (Mặc định dùng Cache)
+          // Tải dữ liệu có bộ nhớ tạm SessionStorage siêu tốc
           const loadAllData = React.useCallback(async (forceRefresh = false) => {
             try {
               setIsLoading(true);
-              // Chỉ thêm timestamp khi bấm ép buộc tải lại
-              const queryParam = forceRefresh ? `&t=${Date.now()}` : '';
 
+              if (!forceRefresh) {
+                const cachedLich = sessionStorage.getItem('cache_lich');
+                const cachedVi = sessionStorage.getItem('cache_vi');
+                const cachedBb = sessionStorage.getItem('cache_bb');
+
+                if (cachedLich && cachedVi && cachedBb) {
+                  processAllTexts(cachedLich, cachedVi, cachedBb);
+                  setIsLoading(false);
+                  return;
+                }
+              }
+
+              const queryParam = forceRefresh ? `&t=${Date.now()}` : '';
               const [resLich, resVi, resBb] = await Promise.all([
                 fetch(URL_LICH_LAM_VIEC + queryParam),
                 fetch(URL_VI_PHAM + queryParam),
@@ -157,69 +168,69 @@
                 resBb.text()
               ]);
 
-              // 1. Xử lý Lịch làm việc
-              const rawLich = parseCSV(textLich);
-              if (rawLich.length > 4) {
-                let dates = rawLich[2] || [];
-                let days = rawLich[3] || [];
-                let headers = [];
-                for(let colIdx = 4; colIdx < dates.length; colIdx++) {
-                  if (dates[colIdx]) {
-                    headers.push({ index: colIdx, dateStr: dates[colIdx], dayStr: days[colIdx] || '' });
-                  }
-                }
-                setAllLichHeaders(headers);
+              sessionStorage.setItem('cache_lich', textLich);
+              sessionStorage.setItem('cache_vi', textVi);
+              sessionStorage.setItem('cache_bb', textBb);
 
-                let parsedStaff = [];
-                for (let i = 4; i < rawLich.length; i++) {
-                  const row = rawLich[i];
-                  if (row[3] && (row[3].includes("Tổng") || row[3].includes("Nhóm"))) break;
-                  if (row[3]) {
-                    parsedStaff.push({ gioitinh: row[0] || '', stt: row[1] || '', msnv: row[2] || '', name: row[3], rawRow: row });
-                  }
-                }
-                setLichRows(parsedStaff);
-              }
-
-              // 2. Xử lý Vi Phạm
-              const rowsVi = parseCSV(textVi);
-              let parsedVi = [];
-              rowsVi.forEach((row, idx) => {
-                if (idx > 0 && row[2]) {
-                  const dateInfo = parseDateDetails(row[0]);
-                  if (dateInfo.month) {
-                    parsedVi.push({ id: idx, time: row[0], code: row[1], name: row[2], error: row[3], userId: row[4], reporter: row[5], dateInfo });
-                  }
-                }
-              });
-              setViolationData(parsedVi);
-
-              // 3. Xử lý Biên Bản
-              const rowsBb = parseCSV(textBb);
-              let parsedBb = [];
-              rowsBb.forEach((row, idx) => {
-                if (idx > 0 && row[2]) {
-                  const dateInfo = parseDateDetails(row[0]);
-                  if (dateInfo.month) {
-                    parsedBb.push({ id: idx, date: row[0], username: row[1], name: row[2], content: row[3], userId: row[4], creator: row[5], image: row[6], dateInfo });
-                  }
-                }
-              });
-              setBienbanData(parsedBb);
+              processAllTexts(textLich, textVi, textBb);
               setIsLoading(false);
             } catch (err) {
-              console.error("Lỗi khi tải dữ liệu:", err);
+              console.error("Lỗi tải dữ liệu:", err);
               setIsLoading(false);
             }
           }, []);
 
-          React.useEffect(() => {
-            loadAllData(false); // Lần đầu mở trang dùng cache để tải tức thì
-          }, [loadAllData]);
+          const processAllTexts = (textLich, textVi, textBb) => {
+            // 1. Lịch
+            const rawLich = parseCSV(textLich);
+            if (rawLich.length > 4) {
+              const dates = rawLich[2] || [];
+              const days = rawLich[3] || [];
+              const headers = [];
+              for(let colIdx = 4; colIdx < dates.length; colIdx++) {
+                if (dates[colIdx]) headers.push({ index: colIdx, dateStr: dates[colIdx], dayStr: days[colIdx] || '' });
+              }
+              setAllLichHeaders(headers);
 
-          const handleInputChange = (key, value, isNum = false) => {
-            setInputs(p => ({ ...p, [key]: isNum ? (parseFloat(value) || 0) : value }));
+              const parsedStaff = [];
+              for (let i = 4; i < rawLich.length; i++) {
+                const row = rawLich[i];
+                if (row[3] && (row[3].includes("Tổng") || row[3].includes("Nhóm"))) break;
+                if (row[3]) parsedStaff.push({ gioitinh: row[0] || '', stt: row[1] || '', msnv: row[2] || '', name: row[3], rawRow: row });
+              }
+              setLichRows(parsedStaff);
+            }
+
+            // 2. Vi phạm
+            const rowsVi = parseCSV(textVi);
+            const parsedVi = [];
+            for(let idx = 1; idx < rowsVi.length; idx++) {
+              const row = rowsVi[idx];
+              if (row[2]) {
+                const dateInfo = parseDateDetails(row[0]);
+                if (dateInfo.month) parsedVi.push({ id: idx, time: row[0], code: row[1], name: row[2], error: row[3], userId: row[4], reporter: row[5], dateInfo });
+              }
+            }
+            setViolationData(parsedVi);
+
+            // 3. Biên bản
+            const rowsBb = parseCSV(textBb);
+            const parsedBb = [];
+            for(let idx = 1; idx < rowsBb.length; idx++) {
+              const row = rowsBb[idx];
+              if (row[2]) {
+                const dateInfo = parseDateDetails(row[0]);
+                if (dateInfo.month) parsedBb.push({ id: idx, date: row[0], username: row[1], name: row[2], content: row[3], userId: row[4], creator: row[5], image: row[6], dateInfo });
+              }
+            }
+            setBienbanData(parsedBb);
           };
+
+          React.useEffect(() => { loadAllData(false); }, [loadAllData]);
+
+          const handleInputChange = React.useCallback((key, value, isNum = false) => {
+            setInputs(p => ({ ...p, [key]: isNum ? (parseFloat(value) || 0) : value }));
+          }, []);
 
           const computed = React.useMemo(() => {
             const i = inputs;
@@ -243,13 +254,6 @@
             const total_sdung = i.sdung_leader + i.sdung_nsuat + i.sdung_gcong + i.sdung_thuviec + i.sdung_fl_had + i.sdung_fl_viec;
             const total_gctt = gctt_leader + gctt_nsuat + gctt_gcong + gctt_thuviec + gctt_fl_had + gctt_fl_viec;
             const act_don = i.feeder_cbs1 + i.feeder_cbs2 + i.tron_lan;
-            
-            const tile_leader = i.skh_leader > 0 ? Math.round((i.sdung_leader / i.skh_leader) * 100) : 0;
-            const tile_nsuat = i.skh_nsuat > 0 ? Math.round((i.sdung_nsuat / i.skh_nsuat) * 100) : 0;
-            const tile_gcong = i.skh_gcong > 0 ? Math.round((i.sdung_gcong / i.skh_gcong) * 100) : 0;
-            const tile_thuviec = i.skh_thuviec > 0 ? Math.round((i.sdung_thuviec / i.skh_thuviec) * 100) : 0;
-            const tile_fl_had = i.skh_fl_had > 0 ? Math.round((i.sdung_fl_had / i.skh_fl_had) * 100) : 0;
-            const tile_fl_viec = i.skh_fl_viec > 0 ? Math.round((i.sdung_fl_viec / i.skh_fl_viec) * 100) : 0;
 
             const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
             const nang_suat_bao_cao = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
@@ -259,7 +263,12 @@
             return {
               gc_leader, gc_nsuat, gc_gcong, gc_thuviec, gc_fl_had, gc_fl_viec,
               gctt_leader, gctt_nsuat, gctt_gcong, gctt_thuviec, gctt_fl_had, gctt_fl_viec,
-              tile_leader, tile_nsuat, tile_gcong, tile_thuviec, tile_fl_had, tile_fl_viec,
+              tile_leader: i.skh_leader > 0 ? Math.round((i.sdung_leader / i.skh_leader) * 100) : 0,
+              tile_nsuat: i.skh_nsuat > 0 ? Math.round((i.sdung_nsuat / i.skh_nsuat) * 100) : 0,
+              tile_gcong: i.skh_gcong > 0 ? Math.round((i.sdung_gcong / i.skh_gcong) * 100) : 0,
+              tile_thuviec: i.skh_thuviec > 0 ? Math.round((i.sdung_thuviec / i.skh_thuviec) * 100) : 0,
+              tile_fl_had: i.skh_fl_had > 0 ? Math.round((i.sdung_fl_had / i.skh_fl_had) * 100) : 0,
+              tile_fl_viec: i.skh_fl_viec > 0 ? Math.round((i.sdung_fl_viec / i.skh_fl_viec) * 100) : 0,
               total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, 
               nang_suat_diem_danh: total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0, 
               nang_suat_bao_cao, reportText, formatGctt: (val) => val.toFixed(1).replace('.', ','), 
@@ -269,24 +278,23 @@
 
           const currentWeekHeaders = React.useMemo(() => {
             if (allLichHeaders.length === 0) return [];
-            
             const targetDate = new Date(selectedLichDate);
             let matchedIdx = -1;
 
-            allLichHeaders.forEach((h, idx) => {
-              const d = parseDDMMYYYY(h.dateStr);
+            for(let idx = 0; idx < allLichHeaders.length; idx++) {
+              const d = parseDDMMYYYY(allLichHeaders[idx].dateStr);
               if (d && d.getFullYear() === targetDate.getFullYear() &&
                        d.getMonth() === targetDate.getMonth() &&
                        d.getDate() === targetDate.getDate()) {
                 matchedIdx = idx;
+                break;
               }
-            });
+            }
 
             if (matchedIdx !== -1) {
               const startIdx = Math.floor(matchedIdx / 7) * 7;
               return allLichHeaders.slice(startIdx, startIdx + 7);
             }
-
             return allLichHeaders.slice(0, 7);
           }, [allLichHeaders, selectedLichDate]);
 
@@ -294,40 +302,30 @@
             const src = activeTab === 'vi-pham' ? violationData : bienbanData;
             const stats = {};
 
-            src.forEach(item => {
+            for(let i = 0; i < src.length; i++) {
+              const item = src[i];
               const m = item.dateInfo.month;
-              if (!m) return;
+              if (!m) continue;
 
-              if (!stats[m]) {
-                stats[m] = { count: 0, dayCounts: {}, errorCounts: {} };
-              }
-
+              if (!stats[m]) stats[m] = { count: 0, dayCounts: {}, errorCounts: {} };
               stats[m].count += 1;
 
               const rawDate = item.dateInfo.rawDate;
-              if (rawDate) {
-                stats[m].dayCounts[rawDate] = (stats[m].dayCounts[rawDate] || 0) + 1;
-              }
+              if (rawDate) stats[m].dayCounts[rawDate] = (stats[m].dayCounts[rawDate] || 0) + 1;
 
               const errText = activeTab === 'vi-pham' ? item.error : item.content;
-              if (errText) {
-                stats[m].errorCounts[errText] = (stats[m].errorCounts[errText] || 0) + 1;
-              }
-            });
+              if (errText) stats[m].errorCounts[errText] = (stats[m].errorCounts[errText] || 0) + 1;
+            }
 
             const sortedMonths = Object.keys(stats).map(Number).sort((a, b) => a - b);
             const result = {};
 
             sortedMonths.forEach((m, idx) => {
               const s = stats[m];
-              
               let maxDayStr = 'N/A';
               let maxDayCount = 0;
               Object.entries(s.dayCounts).forEach(([day, count]) => {
-                if (count > maxDayCount) {
-                  maxDayCount = count;
-                  maxDayStr = day;
-                }
+                if (count > maxDayCount) { maxDayCount = count; maxDayStr = day; }
               });
 
               const sortedErrors = Object.entries(s.errorCounts)
@@ -339,8 +337,7 @@
               let trendClass = "text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded";
 
               if (idx > 0) {
-                const prevMonth = sortedMonths[idx - 1];
-                const prevCount = stats[prevMonth].count;
+                const prevCount = stats[sortedMonths[idx - 1]].count;
                 if (prevCount > 0) {
                   const percentChange = Math.round(((s.count - prevCount) / prevCount) * 100);
                   if (percentChange > 0) {
@@ -356,14 +353,7 @@
                 }
               }
 
-              result[m] = {
-                count: s.count,
-                trendText,
-                trendClass,
-                maxDayStr,
-                maxDayCount,
-                topErrors: sortedErrors
-              };
+              result[m] = { count: s.count, trendText, trendClass, maxDayStr, maxDayCount, topErrors: sortedErrors };
             });
 
             return result;
@@ -371,16 +361,21 @@
 
           const activeMonthsWithData = React.useMemo(() => {
             const src = activeTab === 'vi-pham' ? violationData : bienbanData;
-            const months = src.map(item => item.dateInfo.month).filter(m => m !== null);
-            return [...new Set(months)].sort((a, b) => a - b);
+            const months = new Set();
+            for(let i = 0; i < src.length; i++) {
+              if (src[i].dateInfo.month !== null) months.add(src[i].dateInfo.month);
+            }
+            return Array.from(months).sort((a, b) => a - b);
           }, [activeTab, violationData, bienbanData]);
 
           const filteredRawData = React.useMemo(() => {
             const src = activeTab === 'vi-pham' ? violationData : bienbanData;
+            const nameSearch = filterName.toLowerCase();
+            const monthVal = filterMonth !== '' ? parseInt(filterMonth, 10) : null;
+
             return src.filter(item => {
-              const m = item.dateInfo.month;
-              const matchMonth = filterMonth === '' || (m !== null && m === parseInt(filterMonth, 10));
-              const matchName = item.name.toLowerCase().includes(filterName.toLowerCase());
+              const matchMonth = monthVal === null || (item.dateInfo.month !== null && item.dateInfo.month === monthVal);
+              const matchName = !nameSearch || item.name.toLowerCase().includes(nameSearch);
               return matchMonth && matchName;
             });
           }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
@@ -397,9 +392,9 @@
               e('div', { className: 'flex items-center gap-2' },
                 e('button', { 
                   className: 'text-[10px] font-bold bg-white text-orange-700 px-2 py-0.5 rounded shadow hover:bg-orange-100 transition active:scale-95', 
-                  onClick: () => loadAllData(true) // Bấm nút mới ép buộc tải lại mới nhất
+                  onClick: () => loadAllData(true)
                 }, isLoading ? '⏳ Đang tải...' : '⚡ Ép tải lại mới nhất'),
-                e('span', { className: 'text-[10px] font-mono bg-orange-700/40 px-1.5 py-0.5 rounded text-white border border-orange-400/30' }, 'v2.3 Fast Cache')
+                e('span', { className: 'text-[10px] font-mono bg-orange-700/40 px-1.5 py-0.5 rounded text-white border border-orange-400/30' }, 'v2.4 Ultra Fast')
               )
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-500 text-center text-[11px] overflow-x-auto shadow-sm' },
@@ -414,7 +409,7 @@
                 e('div', { className: 'flex flex-wrap justify-between items-center border-b border-orange-50 pb-1.5 gap-2' },
                   e('div', { className: 'flex items-center gap-2' },
                     e('h2', { className: 'font-bold text-xs text-orange-800 uppercase tracking-wide' }, 'Lịch Trực Ban Ca'),
-                    isLoading && e('span', { className: 'text-[10px] text-orange-600 font-bold animate-pulse' }, '(Đang đồng bộ dữ liệu...)')
+                    isLoading && e('span', { className: 'text-[10px] text-orange-600 font-bold animate-pulse' }, '(Đang tải dữ liệu...)')
                   ),
                   
                   e('div', { className: 'flex items-center gap-2 bg-orange-50 p-1 rounded border border-orange-100 text-[10px]' },
@@ -635,7 +630,7 @@
                     e('select', { className: 'p-1 border border-orange-100 rounded text-[11px] bg-orange-50/30 font-bold text-slate-700 focus:outline-none focus:bg-white', value: filterMonth, onChange: ev => setFilterMonth(ev.target.value) }, 
                       e('option', { value: '' }, 'Tất cả tháng'), activeMonthsWithData.map(m => e('option', { key: m, value: m }, `Tháng ${m}`))
                     ),
-                    e('input', { type: 'text', placeholder: 'Tìm kiếm nhân viên...', className: 'p-1 border border-orange-100 rounded text-[11px] w-40 text-center font-bold focus:outline-none focus:bg-white transition', value: filterName, onChange: ev => handleInputChange('filterName', ev.target.value) })
+                    e('input', { type: 'text', placeholder: 'Tìm kiếm nhân viên...', className: 'p-1 border border-orange-100 rounded text-[11px] w-40 text-center font-bold focus:outline-none focus:bg-white transition', value: filterName, onChange: ev => setFilterName(ev.target.value) })
                   )
                 ),
                 e('div', { className: 'bg-white rounded-lg border border-orange-100 overflow-hidden shadow-sm' },
