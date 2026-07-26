@@ -105,7 +105,6 @@
           return { day: null, month: null, rawDate: dateStr };
         }
 
-        // Hàm hỗ trợ parse ngày dạng DD/MM/YYYY
         function parseDDMMYYYY(dateStr) {
           if (!dateStr) return null;
           const parts = dateStr.split('/');
@@ -261,7 +260,6 @@
             };
           }, [inputs, todayStr]);
 
-          // Tự động tìm tuần hiện tại theo mốc ngày chọn
           const currentWeekHeaders = React.useMemo(() => {
             if (allLichHeaders.length === 0) return [];
             
@@ -284,6 +282,63 @@
 
             return allLichHeaders.slice(0, 7);
           }, [allLichHeaders, selectedLichDate]);
+
+          // TÍNH TOÁN THỐNG KÊ THEO THÁNG (ĐÃ BỔ SUNG ĐỂ SỬA LỖI)
+          const monthlyStats = React.useMemo(() => {
+            const src = activeTab === 'vi-pham' ? violationData : bienbanData;
+            const stats = {};
+
+            src.forEach(item => {
+              const m = item.dateInfo.month;
+              if (!m) return;
+
+              if (!stats[m]) {
+                stats[m] = { count: 0, dayCounts: {}, errorCounts: {} };
+              }
+
+              stats[m].count += 1;
+
+              const rawDate = item.dateInfo.rawDate;
+              if (rawDate) {
+                stats[m].dayCounts[rawDate] = (stats[m].dayCounts[rawDate] || 0) + 1;
+              }
+
+              const errText = activeTab === 'vi-pham' ? item.error : item.content;
+              if (errText) {
+                stats[m].errorCounts[errText] = (stats[m].errorCounts[errText] || 0) + 1;
+              }
+            });
+
+            const result = {};
+            Object.keys(stats).forEach(m => {
+              const s = stats[m];
+              
+              let maxDayStr = 'N/A';
+              let maxDayCount = 0;
+              Object.entries(s.dayCounts).forEach(([day, count]) => {
+                if (count > maxDayCount) {
+                  maxDayCount = count;
+                  maxDayStr = day;
+                }
+              });
+
+              const sortedErrors = Object.entries(s.errorCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([name, qty]) => ({ name, qty }));
+
+              result[m] = {
+                count: s.count,
+                trendText: "Ổn định",
+                trendClass: "text-emerald-600 font-bold",
+                maxDayStr,
+                maxDayCount,
+                topErrors: sortedErrors
+              };
+            });
+
+            return result;
+          }, [activeTab, violationData, bienbanData]);
 
           const activeMonthsWithData = React.useMemo(() => {
             const src = activeTab === 'vi-pham' ? violationData : bienbanData;
@@ -324,7 +379,6 @@
                 e('div', { className: 'flex flex-wrap justify-between items-center border-b border-orange-50 pb-1.5 gap-2' },
                   e('h2', { className: 'font-bold text-xs text-orange-800 uppercase tracking-wide' }, 'Lịch Trực Ban Ca'),
                   
-                  /* BỘ LỌC CHỌN NGÀY VÀ NÚT CHUYỂN TUẦN */
                   e('div', { className: 'flex items-center gap-2 bg-orange-50 p-1 rounded border border-orange-100 text-[10px]' },
                     e('button', { className: 'px-1.5 py-0.5 rounded border border-orange-200 hover:bg-white font-bold text-orange-700 transition', onClick: () => changeWeekByOffset(-7) }, '◀ Tuần trước'),
                     e('button', { className: 'px-1.5 py-0.5 rounded bg-[#ff7300] text-white font-bold shadow-sm hover:bg-orange-600 transition', onClick: () => setSelectedLichDate(new Date().toISOString().split('T')[0]) }, 'Tuần này'),
