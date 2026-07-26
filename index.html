@@ -3,807 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Điều Hành Sort KTC 01</title>
-    <link rel="icon" href="data:,">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <title>Hệ Thống Quản Lý Năng Suất Kho</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body, input, textarea, select, button, table {
-            font-family: 'Times New Roman', Times, serif !important;
-        }
-        .excel-table th, .excel-table td { 
-            border: 1px solid #000000 !important; 
-            vertical-align: middle !important;
-        }
-        .excel-table {
-            table-layout: fixed;
-            width: 100% !important;
-        }
-        .note-textarea {
-            resize: none;
-            overflow: hidden;
-            background: transparent;
-            word-break: break-all;
-            white-space: pre-wrap;
-            text-align: center;
-            font-size: 10px;
-            line-height: 1.3;
-            width: 100%;
-            border: none;
-            display: block;
-            height: auto;
-        }
-        .note-textarea:focus { outline: none; }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
-            -webkit-appearance: none; margin: 0;
-        }
-        input[type=number] { -moz-appearance: textfield; }
+        [v-cloak] { display: none; }
+        .custom-scrollbar {-webkit-overflow-scrolling: touch;}
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 text-[11px] antialiased">
-
-    <div id="root"></div>
-
-    <script>
-        const SPREADSHEET_ID = "2PACX-1vR9Dr7VQeqSwvvbv0HCypWct2ygmiDh4wsWmBm-n7XZCeIMPuOAtePGf2w1KNPv_d7G3b6lQiCQnIMv";
-        const URL_LICH_LAM_VIEC = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=594239313&output=csv`;
-        const URL_VI_PHAM       = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=0&output=csv`;
-        const URL_BIEN_BAN      = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=735999237&output=csv`;
-
-        const e = React.createElement;
-
-        function parseCSV(text) {
-          if (!text) return [];
-          const lines = text.split(/\r\n|\n/);
-          const result = [];
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            if (!line) continue;
-            const row = [];
-            let current = '';
-            let inQuotes = false;
-            for (let j = 0; j < line.length; j++) {
-              const char = line[j];
-              if (char === '"') { inQuotes = !inQuotes; }
-              else if (char === ',' && !inQuotes) { row.push(current.trim()); current = ''; }
-              else { current += char; }
-            }
-            row.push(current.trim());
-            result.push(row);
-          }
-          return result;
-        }
-
-        function timeToHours(tStr) {
-          if (!tStr || !tStr.includes(':')) return 0;
-          const [h, m] = tStr.split(':').map(Number);
-          return h + (m / 60);
-        }
-
-        function getTodayString() {
-          const today = new Date();
-          const dd = String(today.getDate()).padStart(2, '0');
-          const mm = String(today.getMonth() + 1).padStart(2, '0');
-          return `${dd}/${mm}/${today.getFullYear()}`;
-        }
-
-        function parseDateDetails(dateStr) {
-          if (!dateStr) return { day: null, month: null, rawDate: "" };
-          const cleanStr = dateStr.split(' ')[0];
-          let parts = [];
-          if (cleanStr.includes('/')) parts = cleanStr.split('/');
-          else if (cleanStr.includes('-')) parts = cleanStr.split('-');
-          
-          if (parts.length >= 2) {
-            const d = parts[0].length <= 2 ? parseInt(parts[0], 10) : parseInt(parts[2], 10);
-            const m = parseInt(parts[1], 10);
-            return { day: d, month: m, rawDate: String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0') };
-          }
-          return { day: null, month: null, rawDate: dateStr };
-        }
-
-        function parseDDMMYYYY(dateStr) {
-          if (!dateStr) return null;
-          const parts = dateStr.split('/');
-          if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
-          return null;
-        }
-
-        function App() {
-          // Trạng thái Đăng nhập: 'none' (chưa chọn), 'guest' (Khách), 'user' (Đã đăng nhập)
-          const [userRole, setUserRole] = React.useState('none');
-          const [usernameInput, setUsernameInput] = React.useState('');
-          const [passwordInput, setPasswordInput] = React.useState('');
-
-          const [activeTab, setActiveTab] = React.useState('vi-pham');
-          const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-          const [filterName, setFilterName] = React.useState('');
-          const [filterMonth, setFilterMonth] = React.useState('');
-
-          const [allLichHeaders, setAllLichHeaders] = React.useState([]); 
-          const [lichRows, setLichRows] = React.useState([]);       
-          const [selectedLichDate, setSelectedLichDate] = React.useState(() => new Date().toISOString().split('T')[0]);
-
-          const [violationData, setViolationData] = React.useState([]);
-          const [bienbanData, setBienbanData] = React.useState([]);
-          const [isLoading, setIsLoading] = React.useState(true);
-
-          const todayStr = React.useMemo(() => getTodayString(), []);
-
-          const [inputs, setInputs] = React.useState({
-            ca_chung: '07:00-16:00',
-            vt_leader: 'Leader', v_leader: '07:30', r_leader: '16:30', tns_leader: 3, skh_leader: 3, sdung_leader: 3, note_leader: '',
-            vt_nsuat: 'NV Năng suất', v_nsuat: '07:00', r_nsuat: '16:30', tns_nsuat: 39, skh_nsuat: 32, sdung_nsuat: 31, note_nsuat: '1 nhân viên off bệnh',
-            vt_gcong: 'NV Giờ công', v_gcong: '07:00', r_gcong: '17:30', tns_gcong: 2, skh_gcong: 2, sdung_gcong: 2, note_gcong: '',
-            vt_thuviec: 'Nhân viên thử việc', v_thuviec: '07:30', r_thuviec: '16:30', tns_thuviec: 0, skh_thuviec: 0, sdung_thuviec: 0, note_thuviec: '',
-            vt_fl_had: 'FL - Hoa Anh Đào', v_fl_had: '08:00', r_fl_had: '17:00', tns_fl_had: 0, skh_fl_had: 0, sdung_fl_had: 0, note_fl_had: '',
-            vt_fl_viec: 'FL - Viecco', v_fl_viec: '08:00', r_fl_viec: '17:00', tns_fl_viec: 0, skh_fl_viec: 0, sdung_fl_viec: 0, note_fl_viec: '',
-            feeder_cbs1: 19701, feeder_cbs2: 37422, tron_lan: 1000, forecast: 65000,
-            phat_sinh: 'Không'
-          });
-
-          const loadAllData = React.useCallback(async (forceRefresh = false) => {
-            try {
-              setIsLoading(true);
-
-              if (!forceRefresh) {
-                const cachedLich = sessionStorage.getItem('cache_lich');
-                const cachedVi = sessionStorage.getItem('cache_vi');
-                const cachedBb = sessionStorage.getItem('cache_bb');
-
-                if (cachedLich && cachedVi && cachedBb) {
-                  processAllTexts(cachedLich, cachedVi, cachedBb);
-                  setIsLoading(false);
-                  return;
-                }
-              }
-
-              const queryParam = forceRefresh ? `&t=${Date.now()}` : '';
-              const [resLich, resVi, resBb] = await Promise.all([
-                fetch(URL_LICH_LAM_VIEC + queryParam),
-                fetch(URL_VI_PHAM + queryParam),
-                fetch(URL_BIEN_BAN + queryParam)
-              ]);
-
-              const [textLich, textVi, textBb] = await Promise.all([
-                resLich.text(),
-                resVi.text(),
-                resBb.text()
-              ]);
-
-              sessionStorage.setItem('cache_lich', textLich);
-              sessionStorage.setItem('cache_vi', textVi);
-              sessionStorage.setItem('cache_bb', textBb);
-
-              processAllTexts(textLich, textVi, textBb);
-              setIsLoading(false);
-            } catch (err) {
-              console.error("Lỗi tải dữ liệu:", err);
-              setIsLoading(false);
-            }
-          }, []);
-
-          const processAllTexts = (textLich, textVi, textBb) => {
-            const rawLich = parseCSV(textLich);
-            if (rawLich.length > 4) {
-              const dates = rawLich[2] || [];
-              const days = rawLich[3] || [];
-              const headers = [];
-              for(let colIdx = 4; colIdx < dates.length; colIdx++) {
-                if (dates[colIdx]) headers.push({ index: colIdx, dateStr: dates[colIdx], dayStr: days[colIdx] || '' });
-              }
-              setAllLichHeaders(headers);
-
-              const parsedStaff = [];
-              for (let i = 4; i < rawLich.length; i++) {
-                const row = rawLich[i];
-                if (row[3] && (row[3].includes("Tổng") || row[3].includes("Nhóm"))) break;
-                if (row[3]) parsedStaff.push({ gioitinh: row[0] || '', stt: row[1] || '', msnv: row[2] || '', name: row[3], rawRow: row });
-              }
-              setLichRows(parsedStaff);
-            }
-
-            const rowsVi = parseCSV(textVi);
-            const parsedVi = [];
-            for(let idx = 1; idx < rowsVi.length; idx++) {
-              const row = rowsVi[idx];
-              if (row[2]) {
-                const dateInfo = parseDateDetails(row[0]);
-                if (dateInfo.month) parsedVi.push({ id: idx, time: row[0], code: row[1], name: row[2], error: row[3], userId: row[4], reporter: row[5], dateInfo });
-              }
-            }
-            setViolationData(parsedVi);
-
-            const rowsBb = parseCSV(textBb);
-            const parsedBb = [];
-            for(let idx = 1; idx < rowsBb.length; idx++) {
-              const row = rowsBb[idx];
-              if (row[2]) {
-                const dateInfo = parseDateDetails(row[0]);
-                if (dateInfo.month) parsedBb.push({ id: idx, date: row[0], username: row[1], name: row[2], content: row[3], userId: row[4], creator: row[5], image: row[6], dateInfo });
-              }
-            }
-            setBienbanData(parsedBb);
-          };
-
-          React.useEffect(() => { loadAllData(false); }, [loadAllData]);
-
-          const handleLoginSubmit = (eEvt) => {
-            eEvt.preventDefault();
-            if (usernameInput.trim()) {
-              setUserRole('user');
-              setActiveTab('lich-lam-viec');
-            } else {
-              alert('Vui lòng nhập tên tài khoản');
-            }
-          };
-
-          const handleGuestSelect = () => {
-            setUserRole('guest');
-            setActiveTab('vi-pham');
-          };
-
-          const handleInputChange = React.useCallback((key, value, isNum = false) => {
-            setInputs(p => ({ ...p, [key]: isNum ? (parseFloat(value) || 0) : value }));
-          }, []);
-
-          const computed = React.useMemo(() => {
-            const i = inputs;
-            const calcGc = (v, r) => { const diff = timeToHours(r) - timeToHours(v); return diff > 1 ? diff - 1 : 0; };
-            const gc_leader = calcGc(i.v_leader, i.r_leader);
-            const gc_nsuat = calcGc(i.v_nsuat, i.r_nsuat);
-            const gc_gcong = calcGc(i.v_gcong, i.r_gcong);
-            const gc_thuviec = calcGc(i.v_thuviec, i.r_thuviec);
-            const gc_fl_had = calcGc(i.v_fl_had, i.r_fl_had);
-            const gc_fl_viec = calcGc(i.v_fl_viec, i.r_fl_viec);
-
-            const gctt_leader = gc_leader * i.sdung_leader;
-            const gctt_nsuat = gc_nsuat * i.sdung_nsuat;
-            const gctt_gcong = gc_gcong * i.sdung_gcong;
-            const gctt_thuviec = gc_thuviec * i.sdung_thuviec;
-            const gctt_fl_had = gc_fl_had * i.sdung_fl_had;
-            const gctt_fl_viec = gc_fl_viec * i.sdung_fl_viec;
-
-            const total_tns = i.tns_leader + i.tns_nsuat + i.tns_gcong + i.tns_thuviec + i.tns_fl_had + i.tns_fl_viec;
-            const total_skh = i.skh_leader + i.skh_nsuat + i.skh_gcong + i.skh_thuviec + i.skh_fl_had + i.skh_fl_viec;
-            const total_sdung = i.sdung_leader + i.sdung_nsuat + i.sdung_gcong + i.sdung_thuviec + i.sdung_fl_had + i.sdung_fl_viec;
-            const total_gctt = gctt_leader + gctt_nsuat + gctt_gcong + gctt_thuviec + gctt_fl_had + gctt_fl_viec;
-            const act_don = i.feeder_cbs1 + i.feeder_cbs2 + i.tron_lan;
-
-            const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
-            const nang_suat_bao_cao = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
-
-            const reportText = `${todayStr}\nBáo cáo cuối ca Sort KTC HCM 01\n\n1/ Lượng hàng.\na. Forecast: ${i.forecast.toLocaleString()}\nb. Act: ${act_don.toLocaleString()}\n\n2/ Nhân sự.\nĐáp ứng nhân sự: ${tile_tong}%\n\n3/ Năng suất: ${nang_suat_bao_cao} đơn/h`;
-
-            return {
-              gc_leader, gc_nsuat, gc_gcong, gc_thuviec, gc_fl_had, gc_fl_viec,
-              gctt_leader, gctt_nsuat, gctt_gcong, gctt_thuviec, gctt_fl_had, gctt_fl_viec,
-              tile_leader: i.skh_leader > 0 ? Math.round((i.sdung_leader / i.skh_leader) * 100) : 0,
-              tile_nsuat: i.skh_nsuat > 0 ? Math.round((i.sdung_nsuat / i.skh_nsuat) * 100) : 0,
-              tile_gcong: i.skh_gcong > 0 ? Math.round((i.sdung_gcong / i.skh_gcong) * 100) : 0,
-              tile_thuviec: i.skh_thuviec > 0 ? Math.round((i.sdung_thuviec / i.skh_thuviec) * 100) : 0,
-              tile_fl_had: i.skh_fl_had > 0 ? Math.round((i.sdung_fl_had / i.skh_fl_had) * 100) : 0,
-              tile_fl_viec: i.skh_fl_viec > 0 ? Math.round((i.sdung_fl_viec / i.skh_fl_viec) * 100) : 0,
-              total_tns, total_skh, total_sdung, total_gctt, act_don, tile_tong, 
-              nang_suat_diem_danh: total_gctt > 0 ? Math.round(i.forecast / total_gctt) : 0, 
-              nang_suat_bao_cao, reportText, formatGctt: (val) => val.toFixed(1).replace('.', ','), 
-              dapt_dat: tile_tong, dapt_thieu: tile_tong >= 100 ? 0 : (100 - tile_tong)
-            };
-          }, [inputs, todayStr]);
-
-          const currentWeekHeaders = React.useMemo(() => {
-            if (allLichHeaders.length === 0) return [];
-            const targetDate = new Date(selectedLichDate);
-            let matchedIdx = -1;
-
-            for(let idx = 0; idx < allLichHeaders.length; idx++) {
-              const d = parseDDMMYYYY(allLichHeaders[idx].dateStr);
-              if (d && d.getFullYear() === targetDate.getFullYear() &&
-                       d.getMonth() === targetDate.getMonth() &&
-                       d.getDate() === targetDate.getDate()) {
-                matchedIdx = idx;
-                break;
-              }
-            }
-
-            if (matchedIdx !== -1) {
-              const startIdx = Math.floor(matchedIdx / 7) * 7;
-              return allLichHeaders.slice(startIdx, startIdx + 7);
-            }
-            return allLichHeaders.slice(0, 7);
-          }, [allLichHeaders, selectedLichDate]);
-
-          const monthlyStats = React.useMemo(() => {
-            const src = activeTab === 'vi-pham' ? violationData : bienbanData;
-            const stats = {};
-
-            for(let i = 0; i < src.length; i++) {
-              const item = src[i];
-              const m = item.dateInfo.month;
-              if (!m) continue;
-
-              if (!stats[m]) stats[m] = { count: 0, dayCounts: {}, errorCounts: {} };
-              stats[m].count += 1;
-
-              const rawDate = item.dateInfo.rawDate;
-              if (rawDate) stats[m].dayCounts[rawDate] = (stats[m].dayCounts[rawDate] || 0) + 1;
-
-              const errText = activeTab === 'vi-pham' ? item.error : item.content;
-              if (errText) stats[m].errorCounts[errText] = (stats[m].errorCounts[errText] || 0) + 1;
-            }
-
-            const sortedMonths = Object.keys(stats).map(Number).sort((a, b) => a - b);
-            const result = {};
-
-            sortedMonths.forEach((m, idx) => {
-              const s = stats[m];
-              let maxDayStr = 'N/A';
-              let maxDayCount = 0;
-              Object.entries(s.dayCounts).forEach(([day, count]) => {
-                if (count > maxDayCount) { maxDayCount = count; maxDayStr = day; }
-              });
-
-              const sortedErrors = Object.entries(s.errorCounts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3)
-                .map(([name, qty]) => ({ name, qty }));
-
-              let trendText = "Mới";
-              let trendClass = "text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded";
-
-              if (idx > 0) {
-                const prevCount = stats[sortedMonths[idx - 1]].count;
-                if (prevCount > 0) {
-                  const percentChange = Math.round(((s.count - prevCount) / prevCount) * 100);
-                  if (percentChange > 0) {
-                    trendText = `▲ Tăng ${percentChange}%`;
-                    trendClass = "text-red-600 font-bold bg-red-50 border border-red-100 px-1.5 py-0.5 rounded";
-                  } else if (percentChange < 0) {
-                    trendText = `▼ Giảm ${Math.abs(percentChange)}%`;
-                    trendClass = "text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded";
-                  } else {
-                    trendText = "➖ Không đổi";
-                    trendClass = "text-slate-600 font-bold bg-slate-100 px-1.5 py-0.5 rounded";
-                  }
-                }
-              }
-
-              result[m] = { count: s.count, trendText, trendClass, maxDayStr, maxDayCount, topErrors: sortedErrors };
-            });
-
-            return result;
-          }, [activeTab, violationData, bienbanData]);
-
-          const activeMonthsWithData = React.useMemo(() => {
-            const src = activeTab === 'vi-pham' ? violationData : bienbanData;
-            const months = new Set();
-            for(let i = 0; i < src.length; i++) {
-              if (src[i].dateInfo.month !== null) months.add(src[i].dateInfo.month);
-            }
-            return Array.from(months).sort((a, b) => a - b);
-          }, [activeTab, violationData, bienbanData]);
-
-          const filteredRawData = React.useMemo(() => {
-            const src = activeTab === 'vi-pham' ? violationData : bienbanData;
-            const nameSearch = filterName.toLowerCase();
-            const monthVal = filterMonth !== '' ? parseInt(filterMonth, 10) : null;
-
-            return src.filter(item => {
-              const matchMonth = monthVal === null || (item.dateInfo.month !== null && item.dateInfo.month === monthVal);
-              const matchName = !nameSearch || item.name.toLowerCase().includes(nameSearch);
-              return matchMonth && matchName;
-            });
-          }, [activeTab, violationData, bienbanData, filterName, filterMonth]);
-
-          const changeWeekByOffset = (offsetDays) => {
-            const curr = new Date(selectedLichDate);
-            curr.setDate(curr.getDate() + offsetDays);
-            setSelectedLichDate(curr.toISOString().split('T')[0]);
-          };
-
-          // Danh sách tùy chọn Menu dựa theo quyền sử dụng
-          const availableMenuItems = React.useMemo(() => {
-            const fullList = [
-              ['lich-lam-viec', 'Bảng Lịch Tuần 📅', false],
-              ['report-daily', 'Report & Tự Tính 📊', false],
-              ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️', true],
-              ['bien-ban', 'Biên Bản Quy Trình 📝', true]
-            ];
-
-            if (userRole === 'user') {
-              return fullList;
-            } else {
-              return fullList.filter(item => item[2] === true);
-            }
-          }, [userRole]);
-
-          // GIAO DIỆN CHỌN ĐĂNG NHẬP HOẶC KHÁCH BẢO MẬT
-          if (userRole === 'none') {
-            return e('div', { className: 'min-h-screen flex items-center justify-center bg-slate-100 p-4' },
-              e('div', { className: 'max-w-md w-full bg-white rounded-xl shadow-lg border border-orange-100 p-6 space-y-6' },
-                e('div', { className: 'text-center space-y-2' },
-                  e('div', { className: 'w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto text-white font-bold text-xl shadow-md' }, 'S'),
-                  e('h2', { className: 'text-lg font-bold text-slate-800 uppercase tracking-wide' }, 'Hệ Thống Điều Hành Sort KTC 01'),
-                  e('p', { className: 'text-xs text-slate-500 font-bold' }, 'Vui lòng chọn chế độ truy cập hệ thống')
-                ),
-
-                e('form', { onSubmit: handleLoginSubmit, className: 'space-y-3 bg-orange-50/40 p-4 rounded-lg border border-orange-100' },
-                  e('div', { className: 'font-bold text-xs text-orange-900 border-b border-orange-200 pb-1' }, '🔐 Đăng nhập tài khoản (Đầy đủ quyền)'),
-                  e('div', null,
-                    e('label', { className: 'block text-[10px] font-bold text-slate-600 mb-1' }, 'Tên tài khoản / Mã nhân viên:'),
-                    e('input', {
-                      type: 'text',
-                      required: true,
-                      placeholder: 'Nhập tên tài khoản...',
-                      className: 'w-full p-2 border border-slate-300 rounded font-bold text-slate-700 text-xs focus:outline-none focus:border-orange-500 bg-white',
-                      value: usernameInput,
-                      onChange: ev => setUsernameInput(ev.target.value)
-                    })
-                  ),
-                  e('div', null,
-                    e('label', { className: 'block text-[10px] font-bold text-slate-600 mb-1' }, 'Mật khẩu:'),
-                    e('input', {
-                      type: 'password',
-                      placeholder: '••••••••',
-                      className: 'w-full p-2 border border-slate-300 rounded font-bold text-slate-700 text-xs focus:outline-none focus:border-orange-500 bg-white',
-                      value: passwordInput,
-                      onChange: ev => setPasswordInput(ev.target.value)
-                    })
-                  ),
-                  e('button', {
-                    type: 'submit',
-                    className: 'w-full py-2 bg-[#ff7300] hover:bg-orange-600 text-white font-bold rounded shadow transition text-xs uppercase tracking-wider'
-                  }, 'Đăng Nhập Quản Lý')
-                ),
-
-                e('div', { className: 'relative flex py-1 items-center' },
-                  e('div', { className: 'flex-grow border-t border-slate-200' }),
-                  e('span', { className: 'flex-shrink mx-3 text-slate-400 font-bold text-[10px] uppercase' }, 'Hoặc'),
-                  e('div', { className: 'flex-grow border-t border-slate-200' })
-                ),
-
-                e('div', { className: 'text-center' },
-                  e('button', {
-                    type: 'button',
-                    onClick: handleGuestSelect,
-                    className: 'w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded shadow transition text-xs uppercase tracking-wider flex items-center justify-center gap-1.5'
-                  }, '👁️ Truy cập Chế Độ Khách (Guest)'),
-                  e('p', { className: 'text-[10px] text-slate-500 font-bold mt-2 italic' }, '* Chế độ Khách chỉ cho phép xem Dữ liệu Vi phạm & Biên bản quy trình.')
-                )
-              )
-            );
-          }
-
-          return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
-            // HEADER CÓ HAMBURGER MENU Ở BÊN TRÁI
-            e('header', { className: 'bg-[#ff7300] text-white p-2 flex justify-between items-center shadow-md relative z-50' },
-              
-              // KHU VỰC BÊN TRÁI: HAMBURGER MENU & TIÊU ĐỀ
-              e('div', { className: 'flex items-center gap-2.5' },
-                // HAMBURGER MENU 3 GẠCH (GÓC TRÊN BÊN TRÁI)
-                e('div', { className: 'relative' },
-                  e('button', {
-                    className: 'p-1.5 rounded hover:bg-orange-600 transition flex flex-col justify-center items-center gap-1 w-7 h-7 bg-orange-700/60 border border-orange-400/40',
-                    onClick: () => setIsMenuOpen(!isMenuOpen)
-                  },
-                    e('span', { className: `w-4 h-0.5 bg-white transition-all ${isMenuOpen ? 'rotate-45 translate-y-1' : ''}` }),
-                    e('span', { className: `w-4 h-0.5 bg-white transition-all ${isMenuOpen ? 'opacity-0' : ''}` }),
-                    e('span', { className: `w-4 h-0.5 bg-white transition-all ${isMenuOpen ? '-rotate-45 -translate-y-1' : ''}` })
-                  ),
-
-                  // DROPDOWN MENU XỔ RA
-                  isMenuOpen && e('div', { className: 'absolute left-0 mt-2 w-52 bg-white rounded-md shadow-xl border border-slate-200 py-1 text-slate-800 z-50' },
-                    e('div', { className: 'px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b uppercase' }, 
-                      userRole === 'user' ? 'Danh Mục Quản Lý' : 'Danh Mục Khách Xem'
-                    ),
-                    availableMenuItems.map(item => e('button', {
-                      key: item[0],
-                      className: `w-full text-left px-3 py-2 text-[11px] font-bold flex items-center justify-between hover:bg-orange-50 hover:text-orange-600 transition-colors ${activeTab === item[0] ? 'bg-orange-50 text-orange-600 border-l-4 border-orange-500' : ''}`,
-                      onClick: () => {
-                        setActiveTab(item[0]);
-                        setFilterMonth('');
-                        setFilterName('');
-                        setIsMenuOpen(false);
-                      }
-                    }, item[1]))
-                  )
-                ),
-
-                e('h1', { className: 'text-xs font-bold tracking-wider uppercase' }, 'SORT KTC 01 OPERATIONAL CENTER')
-              ),
-              
-              // KHU VỰC BÊN PHẢI: NÚT ÉP TẢI VÀ THÔNG TIN TÀI KHOẢN
-              e('div', { className: 'flex items-center gap-2' },
-                e('button', { 
-                  className: 'text-[10px] font-bold bg-white text-orange-700 px-2 py-1 rounded shadow hover:bg-orange-100 transition active:scale-95', 
-                  onClick: () => loadAllData(true)
-                }, isLoading ? '⏳ Đang tải...' : '⚡ Ép tải lại'),
-
-                e('button', {
-                  className: 'text-[10px] font-bold bg-orange-800/80 hover:bg-orange-900 text-white px-2 py-1 rounded border border-orange-400/40 transition flex items-center gap-1',
-                  onClick: () => {
-                    if (confirm('Bạn có muốn đăng xuất hoặc đổi chế độ truy cập?')) {
-                      setUserRole('none');
-                    }
-                  }
-                }, 
-                  userRole === 'user' ? `👤 ${usernameInput}` : '👁️ Khách',
-                  e('span', { className: 'text-[9px] opacity-75' }, '(Thoát)')
-                )
-              )
-            ),
-
-            e('main', { className: 'p-2 w-full max-w-[100%] mx-auto flex-1 space-y-3 overflow-x-hidden' },
-              
-              userRole === 'user' && activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 shadow-sm space-y-2' },
-                e('div', { className: 'flex flex-wrap justify-between items-center border-b border-orange-50 pb-1.5 gap-2' },
-                  e('div', { className: 'flex items-center gap-2' },
-                    e('h2', { className: 'font-bold text-xs text-orange-800 uppercase tracking-wide' }, 'Lịch Trực Ban Ca'),
-                    isLoading && e('span', { className: 'text-[10px] text-orange-600 font-bold animate-pulse' }, '(Đang tải dữ liệu...)')
-                  ),
-                  
-                  e('div', { className: 'flex items-center gap-2 bg-orange-50 p-1 rounded border border-orange-100 text-[10px]' },
-                    e('button', { className: 'px-1.5 py-0.5 rounded border border-orange-200 hover:bg-white font-bold text-orange-700 transition', onClick: () => changeWeekByOffset(-7) }, '◀ Tuần trước'),
-                    e('button', { className: 'px-1.5 py-0.5 rounded bg-[#ff7300] text-white font-bold shadow-sm hover:bg-orange-600 transition', onClick: () => setSelectedLichDate(new Date().toISOString().split('T')[0]) }, 'Tuần này'),
-                    e('button', { className: 'px-1.5 py-0.5 rounded border border-orange-200 hover:bg-white font-bold text-orange-700 transition', onClick: () => changeWeekByOffset(7) }, 'Tuần sau ▶'),
-                    e('div', { className: 'flex items-center gap-1 border-l border-orange-200 pl-2 ml-1' },
-                      e('span', { className: 'font-bold text-orange-900' }, 'Chọn ngày:'),
-                      e('input', { 
-                        type: 'date', 
-                        className: 'p-0.5 border border-orange-200 rounded font-bold text-slate-700 bg-white focus:outline-none text-[10px]',
-                        value: selectedLichDate,
-                        onChange: ev => setSelectedLichDate(ev.target.value)
-                      })
-                    )
-                  )
-                ),
-                e('div', { className: 'overflow-x-auto border border-orange-100 rounded-md' },
-                  e('table', { className: 'w-full text-left border-collapse text-[11px]' },
-                    e('thead', { className: 'bg-orange-50/60 font-bold border-b border-orange-100 text-center text-orange-900' },
-                      e('tr', null,
-                        e('th', { className: 'p-1.5 border-r border-orange-100 text-left w-20 bg-orange-50 font-bold' }, 'Họ Và Tên'),
-                        currentWeekHeaders.map(h => e('th', { key: h.index, className: 'p-1.5 border-r border-orange-100 min-w-[75px] font-bold whitespace-nowrap' }, `${h.dayStr} (${h.dateStr})`))
-                      )
-                    ),
-                    e('tbody', null, lichRows.map((row, idx) => e('tr', { key: idx, className: 'border-t border-orange-50 hover:bg-orange-50/30 transition font-bold' },
-                      e('td', { className: 'p-1.5 border-r border-orange-100 font-bold text-slate-800 bg-orange-50/10' }, row.name),
-                      currentWeekHeaders.map(h => { const cell = row.rawRow[h.index] || 'OFF'; return e('td', { key: h.index, className: 'p-1.5 border-r border-orange-100 text-center font-bold ' + (cell === 'OFF' ? 'bg-amber-50/70 text-amber-700' : 'text-slate-700') }, cell); })
-                    )))
-                  )
-                )
-              ),
-
-              userRole === 'user' && activeTab === 'report-daily' && e('div', { className: 'space-y-2' },
-                e('div', { className: 'bg-white rounded-lg shadow-sm p-0.5 overflow-x-auto' },
-                  e('div', { className: 'w-full min-w-[950px]' },
-                    e('table', { className: 'excel-table text-center text-[10px] font-bold bg-white text-black' },
-                      e('colgroup', null,
-                        [
-                          'w-[10%]', 'w-[3.5%]', 'w-[3.5%]', 'w-[10%]', 'w-[5%]', 'w-[6%]', 'w-[5%]', 'w-[5%]', 'w-[7%]', 'w-[4.5%]', 'w-[23.5%]', 'w-[4.5%]', 'w-[6.5%]', 'w-[6.5%]'
-                        ].map((widthClass, idx) => e('col', { key: idx, className: widthClass }))
-                      ),
-                      e('thead', null, 
-                        e('tr', { className: 'bg-[#ff7300] text-white font-bold' }, 
-                          e('th', { colSpan: 11, className: 'p-0.5 text-center text-white font-bold tracking-wider text-[15px] h-7' }, 'ĐIỂM DANH SORT KTC 01'),
-                          e('th', { colSpan: 3, className: 'p-0.5 text-center text-white font-bold text-[15px] h-7 whitespace-nowrap tracking-wide' }, todayStr)
-                        ),
-                        e('tr', { className: 'bg-[#ff7300] text-white font-bold text-[9.5px]' }, 
-                          [
-                            'Ca làm việc', 'Giờ vào', 'Giờ ra', 'Vị trí', 'Giờ Công', 
-                            'Tổng Nhân Sự', 'Số Kế Hoạch', 'Số Đáp Ứng', 'Giờ Công Thực Tế', 
-                            'Thời Gian Bù - Trừ', 'Ghi Chú', 'Tỉ Lệ', 'Đáp Ứng Đạt', 'Đáp Ứng Thiếu'
-                          ].map((name, i) => e('th', { key: i, className: 'p-[2px] text-center text-white align-middle font-bold' }, name))
-                        )
-                      ),
-                      e('tbody', { className: 'text-black text-[10px]' },
-                        [
-                          { id: 'leader', vt: 'vt_leader', v: 'v_leader', r: 'r_leader', tns: 'tns_leader', skh: 'skh_leader', sd: 'sdung_leader', note: 'note_leader', gc: computed.gc_leader, gctt: computed.gctt_leader, tl: computed.tile_leader },
-                          { id: 'nsuat', vt: 'vt_nsuat', v: 'v_nsuat', r: 'r_nsuat', tns: 'tns_nsuat', skh: 'skh_nsuat', sd: 'sdung_nsuat', note: 'note_nsuat', gc: computed.gc_nsuat, gctt: computed.gctt_nsuat, tl: computed.tile_nsuat },
-                          { id: 'gcong', vt: 'vt_gcong', v: 'v_gcong', r: 'r_gcong', tns: 'tns_gcong', skh: 'skh_gcong', sd: 'sdung_gcong', note: 'note_gcong', gc: computed.gc_gcong, gctt: computed.gctt_gcong, tl: computed.tile_gcong },
-                          { id: 'thuviec', vt: 'vt_thuviec', v: 'v_thuviec', r: 'r_thuviec', tns: 'tns_thuviec', sd_tns: 'sdung_thuviec', note: 'note_thuviec', gc: computed.gc_thuviec, gctt: computed.gctt_thuviec, tl: computed.tile_thuviec },
-                          { id: 'fl_had', vt: 'vt_fl_had', v: 'v_fl_had', r: 'r_fl_had', tns: 'tns_fl_had', skh: 'skh_fl_had', sd: 'sdung_fl_had', note: 'note_fl_had', gc: computed.gc_fl_had, gctt: computed.gctt_fl_had, tl: computed.tile_fl_had },
-                          { id: 'fl_viec', vt: 'vt_fl_viec', v: 'v_fl_viec', r: 'r_fl_viec', tns: 'tns_fl_viec', skh: 'skh_fl_viec', sd: 'sdung_fl_viec', note: 'note_fl_viec', gc: computed.gc_fl_viec, gctt: computed.gctt_fl_viec, tl: computed.tile_fl_had }
-                        ].map((row, idx) => e('tr', { key: row.id, className: 'bg-white text-black min-h-[20px]' },
-                          idx === 0 && e('td', { rowSpan: 6, className: 'p-0 text-center align-middle font-bold text-black bg-transparent border-b' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs.ca_chung, onChange: ev => handleInputChange('ca_chung', ev.target.value) })),
-                          
-                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.v], onChange: ev => handleInputChange(row.v, ev.target.value) })),
-                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.r], onChange: ev => handleInputChange(row.r, ev.target.value) })),
-                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'text', className: 'w-full text-center p-0.5 font-bold text-black focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.vt], onChange: ev => handleInputChange(row.vt, ev.target.value) })),
-                          e('td', { className: 'p-[2px] text-center text-black font-bold align-middle bg-transparent' }, row.gc.toString().replace('.', ',')),
-                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 text-black font-bold focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.tns], onChange: ev => handleInputChange(row.tns, ev.target.value, true) })),
-                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 text-black font-bold focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.skh], onChange: ev => handleInputChange(row.skh, ev.target.value, true) })),
-                          e('td', { className: 'p-0 text-center align-middle' }, e('input', { type: 'number', className: 'w-full text-center p-0.5 text-black font-bold focus:outline-none bg-transparent border-0 text-[10px]', value: inputs[row.sd_tns || row.sd], onChange: ev => handleInputChange(row.sd_tns || row.sd, ev.target.value, true) })),
-                          e('td', { className: 'p-[2px] text-center text-black font-bold align-middle bg-transparent' }, row.gctt.toFixed(1).replace('.', ',')),
-                          e('td', { className: 'p-[2px] text-center align-middle font-bold text-black bg-transparent' }, '0'),
-                          
-                          e('td', { className: 'p-1 text-center align-middle' }, e('textarea', {
-                            rows: 1,
-                            className: 'note-textarea font-bold text-black',
-                            value: inputs[row.note],
-                            onInput: (ev) => {
-                              ev.target.style.height = 'auto';
-                              ev.target.style.height = ev.target.scrollHeight + 'px';
-                            },
-                            onChange: (ev) => handleInputChange(row.note, ev.target.value)
-                          })),
-                          
-                          e('td', { className: 'p-[2px] text-center font-bold text-black align-middle bg-transparent' }, row.tl + '%'),
-                          idx === 0 && e('td', { rowSpan: 6, className: 'p-[2px] text-center align-middle font-bold text-black text-[11px] bg-transparent' }, computed.dapt_dat + '%'),
-                          idx === 0 && e('td', { rowSpan: 6, className: 'p-[2px] text-center align-middle font-bold text-black text-[11px] bg-transparent' }, computed.dapt_thieu + '%')
-                        )),
-                        e('tr', { className: 'font-bold bg-white text-red-600 text-center text-[10px] h-5' },
-                          e('td', { colSpan: 4, className: 'p-[2px] text-center text-red-600 font-bold' }, 'Tổng cộng'),
-                          e('td', { className: 'p-[2px] text-center bg-transparent' }, ''), 
-                          e('td', { className: 'p-[2px] text-center text-red-600' }, computed.total_tns), 
-                          e('td', { className: 'p-[2px] text-center text-red-600' }, computed.total_skh), 
-                          e('td', { className: 'p-[2px] text-center text-red-600' }, computed.total_sdung),
-                          e('td', { className: 'p-[2px] text-center font-bold text-red-600 bg-transparent' }, computed.total_gctt.toFixed(1).replace('.', ',')), 
-                          e('td', { className: 'p-[2px] text-center text-red-600 bg-transparent' }, '0'), 
-                          e('td', { className: 'p-[2px] text-center' }, ''), 
-                          e('td', { className: 'p-[2px] text-center font-bold text-red-600 bg-transparent' }, '0%'),
-                          e('td', { className: 'p-[2px] text-center font-bold text-red-600 bg-transparent' }, computed.dapt_dat + '%'), 
-                          e('td', { className: 'p-[2px] text-center font-bold text-red-600 bg-transparent' }, computed.dapt_thieu + '%')
-                        ),
-                        e('tr', { className: 'font-bold bg-white text-red-600 text-center text-[10px] h-5' },
-                          e('td', { colSpan: 4, className: 'p-[2px] text-center text-red-600 font-bold' }, 'Tổng giờ công Sort'),
-                          e('td', { colSpan: 10, className: 'p-[2px] text-center text-red-600 font-bold text-[11px] bg-transparent' }, computed.total_gctt.toFixed(1).replace('.', ','))
-                        )
-                      )
-                    )
-                  )
-                ),
-
-                e('div', { className: 'w-full flex justify-end mt-1' },
-                  e('table', { className: 'excel-table text-center text-[10px] font-bold text-black bg-white w-full max-w-[260px]' },
-                    e('thead', null,
-                      e('tr', { className: 'bg-white text-black' },
-                        e('th', { className: 'p-0.5 border w-1/4' }, 'Day'),
-                        e('th', { className: 'p-0.5 border w-2/4' }, 'FC'),
-                        e('th', { className: 'p-0.5 border w-1/4' }, 'Năng suất')
-                      )
-                    ),
-                    e('tbody', null,
-                      e('tr', { className: 'bg-white text-black' },
-                        e('td', { className: 'p-0.5 text-red-600' }, todayStr),
-                        e('td', { className: 'p-0.5 text-black' }, inputs.forecast.toLocaleString()),
-                        e('td', { className: 'p-0.5 text-red-600 font-bold text-[10px]' }, computed.nang_suat_diem_danh)
-                      )
-                    )
-                  )
-                ),
-
-                e('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-2 mt-2' },
-                  e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 space-y-2 shadow-sm' },
-                    e('h3', { className: 'font-bold text-orange-800 uppercase text-[10px] border-l-4 border-orange-500 pl-2 tracking-wider' }, 'Cấu hình sản lượng thực tế'),
-                    e('div', { className: 'grid grid-cols-2 gap-2' },
-                      e('div', null, e('label', { className: 'block text-slate-500 font-bold mb-0.5 text-[11px]' }, 'Số Feeder CBS 1:'), e('input', { type: 'number', className: 'w-full p-1 border border-orange-100 rounded font-bold bg-orange-50/30 text-slate-700 text-center focus:bg-white focus:outline-none text-[11px]', value: inputs.feeder_cbs1, onChange: ev => handleInputChange('feeder_cbs1', ev.target.value, true) })),
-                      e('div', null, e('label', { className: 'block text-slate-500 font-bold mb-0.5 text-[11px]' }, 'Số Feeder CBS 2:'), e('input', { type: 'number', className: 'w-full p-1 border border-orange-100 rounded font-bold bg-orange-50/30 text-slate-700 text-center focus:bg-white focus:outline-none text-[11px]', value: inputs.feeder_cbs2, onChange: ev => handleInputChange('feeder_cbs2', ev.target.value, true) })),
-                      e('div', null, e('label', { className: 'block text-slate-500 font-bold mb-0.5 text-[11px]' }, 'Tròn lần:'), e('input', { type: 'number', className: 'w-full p-1 border border-orange-100 rounded font-bold bg-orange-50/30 text-slate-700 text-center focus:bg-white focus:outline-none text-[11px]', value: inputs.tron_lan, onChange: ev => handleInputChange('tron_lan', ev.target.value, true) })),
-                      e('div', null, e('label', { className: 'block text-slate-500 font-bold mb-0.5 text-[11px]' }, 'Forecast báo cáo:'), e('input', { type: 'number', className: 'w-full p-1 border border-orange-100 rounded bg-orange-50/30 text-slate-600 text-center focus:bg-white focus:outline-none text-[11px]', value: inputs.forecast, onChange: ev => handleInputChange('forecast', ev.target.value, true) }))
-                    ),
-                    e('div', { className: 'bg-emerald-50 border border-emerald-200 p-1.5 rounded-md flex justify-between items-center font-bold text-slate-700 text-[11px]' },
-                      e('span', { className: 'text-emerald-800' }, '⚡ Tổng hàng Act (CBS1 + CBS2 + Tròn):'),
-                      e('span', { className: 'text-emerald-700 font-bold text-xs bg-white px-1.5 py-0.5 rounded border border-emerald-100 shadow-sm' }, computed.act_don.toLocaleString())
-                    )
-                  ),
-                  e('div', { className: 'bg-slate-800 border border-slate-700 rounded-lg overflow-hidden shadow-sm flex flex-col justify-between' },
-                    e('div', { className: 'bg-slate-900 text-center font-bold p-1.5 text-slate-300 text-[10px] uppercase tracking-wider flex justify-between items-center px-2.5 border-b border-slate-700' }, 
-                      e('span', { className: 'text-orange-400' }, 'Trích xuất dữ liệu tổng giờ công'),
-                      e('button', { className: 'bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold hover:bg-orange-600 shadow transition' }, '📋 Copy Dãy Số')
-                    ),
-                    e('div', { className: 'p-2 space-y-1 font-bold text-slate-300 divide-y divide-slate-700/50 flex-1 flex flex-col justify-center text-[11px]' },
-                      [
-                        { label: 'Tổng công vị trí Leader:', val: computed.formatGctt(computed.gctt_leader) }, 
-                        { label: 'Tổng công NV Năng suất:', val: computed.formatGctt(computed.gctt_nsuat) }, 
-                        { label: 'Tổng công CTV Giờ công:', val: computed.formatGctt(computed.gctt_gcong) }, 
-                        { label: 'Tổng công Freelancer:', val: computed.formatGctt(computed.gctt_fl_had + computed.gctt_fl_viec) }, 
-                        { label: 'Tổng giờ công vận hành ca:', val: computed.formatGctt(computed.total_gctt), cls: 'text-orange-400 font-bold pt-1 text-xs' }
-                      ].map((item, id) => e('div', { key: id, className: 'flex justify-between items-center pt-1 ' + (item.cls || '') }, e('span', null, item.label), e('span', null, item.val)))
-                    )
-                  )
-                ),
-
-                e('div', { className: 'bg-white rounded-lg border border-orange-100 shadow-sm p-2.5 space-y-1.5' },
-                  e('div', { className: 'flex justify-between items-center' },
-                    e('span', { className: 'font-bold text-orange-950 text-[10px] uppercase bg-orange-100 border border-orange-200 text-orange-800 px-1.5 py-0.5 rounded-md' }, '📋 BIỂU MẪU BÁO CÁO CUỐI CA'),
-                    e('button', { className: 'bg-orange-600 hover:bg-orange-700 text-white font-bold px-1.5 py-0.5 rounded text-[10px] transition shadow-sm' }, 'Nhấp để sao chép văn bản 📑')
-                  ),
-                  e('textarea', { className: 'w-full h-28 p-1.5 border border-orange-100 rounded-md bg-slate-900 text-emerald-400 text-[11px] focus:outline-none leading-relaxed shadow-inner font-bold', readOnly: true, value: computed.reportText })
-                )
-              ),
-
-              (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-2' },
-                e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 shadow-sm' },
-                  e('div', { className: 'mb-2 font-bold text-orange-950 text-[11px] uppercase tracking-wider border-b pb-1.5 border-orange-100 flex justify-between items-center' }, 
-                    e('span', null, `📊 THỐNG KÊ BIẾN ĐỘNG & ĐÁNH GIÁ CHẤT LƯỢNG CA VẬN HÀNH`),
-                    e('span', { className: 'text-[9.5px] font-normal text-slate-500 italic uppercase' }, `So sánh theo tháng`)
-                  ),
-                  e('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5' },
-                    activeMonthsWithData.length === 0 ? e('div', { className: 'p-4 text-slate-400 italic col-span-full' }, 'Không tìm thấy dữ liệu tháng.') :
-                    activeMonthsWithData.map(m => {
-                      const stat = monthlyStats[m] || { count: 0, trendText: "N/A", trendClass: "", maxDayStr: "N/A", maxDayCount: 0, topErrors: [] };
-                      
-                      return e('div', { key: m, className: 'p-2 rounded-lg border border-orange-100 bg-orange-50/20 text-[10.5px] transition hover:bg-orange-50 flex flex-col justify-between space-y-1.5 shadow-sm' },
-                        e('div', { className: 'flex justify-between items-center border-b border-orange-100/50 pb-1' },
-                          e('div', { className: 'font-bold text-orange-900 text-xs' }, `Tháng ${m}`),
-                          e('span', { className: `text-[10px] ${stat.trendClass}` }, stat.trendText)
-                        ),
-                        
-                        e('div', { className: 'space-y-1 font-bold' },
-                          e('div', { className: 'flex justify-between items-center text-slate-700' },
-                            e('span', null, 'Tổng số ca:'),
-                            e('span', { className: 'text-sm text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-100' }, `${stat.count} vụ`)
-                          ),
-                          e('div', { className: 'flex justify-between items-center text-slate-700' },
-                            e('span', null, 'Ngày đỉnh điểm:'),
-                            e('span', { className: 'text-red-600 font-bold bg-red-50 px-1 py-0.5 rounded border border-red-100 text-[10px]' }, 
-                              stat.maxDayCount > 0 ? `${stat.maxDayStr} (${stat.maxDayCount} ca)` : 'Không có'
-                            )
-                          )
-                        ),
-
-                        e('div', { className: 'mt-1 pt-1 border-t border-orange-100/50 space-y-1' },
-                          e('div', { className: 'text-[9.5px] text-slate-500 font-bold uppercase tracking-wider' }, 'Lỗi phổ biến nhất:'),
-                          stat.topErrors.length === 0 ? e('div', { className: 'text-[9px] text-slate-400 italic' }, 'Không ghi nhận') :
-                          stat.topErrors.map((err, errIdx) => e('div', { key: errIdx, className: 'flex justify-between items-start gap-2 bg-white/70 p-1 rounded text-[9.5px] border border-orange-50 font-bold text-slate-800' },
-                            e('span', { className: 'truncate max-w-[130px]', title: err.name }, `${errIdx + 1}. ${err.name}`),
-                            e('span', { className: 'text-orange-600 bg-orange-50 px-1 rounded flex-shrink-0' }, `${err.qty} lần`)
-                          ))
-                        )
-                      );
-                    })
-                  )
-                ),
-                e('div', { className: 'bg-white p-2 rounded-lg border border-orange-100 flex flex-wrap gap-2 justify-between items-center shadow-sm text-[11px]' },
-                  e('span', { className: 'font-bold text-orange-900 uppercase tracking-wide border-l-4 border-orange-500 pl-1.5' }, `Danh sách chi tiết dữ liệu hệ thống`),
-                  e('div', { className: 'flex gap-1.5 items-center' },
-                    e('select', { className: 'p-1 border border-orange-100 rounded text-[11px] bg-orange-50/30 font-bold text-slate-700 focus:outline-none focus:bg-white', value: filterMonth, onChange: ev => setFilterMonth(ev.target.value) }, 
-                      e('option', { value: '' }, 'Tất cả tháng'), activeMonthsWithData.map(m => e('option', { key: m, value: m }, `Tháng ${m}`))
-                    ),
-                    e('input', { type: 'text', placeholder: 'Tìm kiếm nhân viên...', className: 'p-1 border border-orange-100 rounded text-[11px] w-40 text-center font-bold focus:outline-none focus:bg-white transition', value: filterName, onChange: ev => setFilterName(ev.target.value) })
-                  )
-                ),
-                e('div', { className: 'bg-white rounded-lg border border-orange-100 overflow-hidden shadow-sm' },
-                  e('div', { className: 'overflow-x-auto' },
-                    e('table', { className: 'w-full text-center text-[11px] border-collapse table-fixed' },
-                      e('colgroup', null,
-                        [
-                          'w-[11%]', 'w-[9%]', 'w-[13%]', 'w-[40%]', 'w-[12%]', 'w-[15%]'
-                        ].map((widthClass, idx) => e('col', { key: idx, className: widthClass }))
-                      ),
-                      e('thead', { className: 'bg-orange-50/40 font-bold border-b border-orange-100 text-orange-900 uppercase text-[10px] tracking-tight' }, 
-                        e('tr', null, 
-                          e('th', { className: 'p-2 text-center' }, 'Ngày tháng'), 
-                          e('th', { className: 'p-2 text-center' }, activeTab === 'vi-pham' ? 'Mã nhân viên' : 'Tài khoản (User)'), 
-                          e('th', { className: 'p-2 text-center' }, 'Họ Tên Nhân Viên'), 
-                          e('th', { className: 'p-2 text-left pl-3' }, activeTab === 'vi-pham' ? 'Chi Tiết Nội Dung Vi Phạm' : 'Nội Dung Biên Bản Ghi Nhận'),
-                          e('th', { className: 'p-2 text-center' }, 'User ID'),
-                          e('th', { className: 'p-2 text-center' }, activeTab === 'vi-pham' ? 'Người Báo Cáo' : 'Người Tạo')
-                        )
-                      ),
-                      e('tbody', null, 
-                        filteredRawData.length === 0 ? e('tr', null, e('td', { colSpan: 6, className: 'p-4 text-slate-400 italic bg-slate-50/10' }, 'Không tìm thấy thông tin phù hợp với điều kiện bộ lọc.')) :
-                        filteredRawData.map(v => e('tr', { key: v.id, className: 'border-t border-orange-50 hover:bg-orange-50/10 transition font-bold text-center' }, 
-                          e('td', { className: 'p-2 text-slate-500 text-center whitespace-normal break-words' }, v.time || v.date), 
-                          e('td', { className: 'p-2 text-red-600 text-center truncate' }, activeTab === 'vi-pham' ? v.code : v.username), 
-                          e('td', { className: 'p-2 text-slate-800 text-center whitespace-normal break-words' }, v.name), 
-                          e('td', { className: 'p-2 text-slate-600 text-left pl-3 whitespace-pre-wrap break-words leading-relaxed font-bold' }, activeTab === 'vi-pham' ? v.error : v.content),
-                          e('td', { className: 'p-2 text-slate-600 font-mono text-[10px] text-center truncate' }, v.userId || 'N/A'),
-                          e('td', { className: 'p-2 text-orange-800 font-semibold text-center whitespace-normal break-words' }, activeTab === 'vi-pham' ? (v.reporter || 'Hệ thống') : (v.creator || 'Hệ thống'))
-                        ))
-                      )
-                    )
-                  )
-                )
-              )
-
-            )
-          );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(e(App));
-    </script>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased">
+
+    <div id="app" class="min-h-screen flex flex-col" v-cloak>
+        
+        <!-- MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ -->
+        <div v-if="currentScreen === 'login'" class="flex-1 flex items-center justify-center p-4 sm:p-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-100">
+                <div class="text-center mb-6">
+                    <img src="logo.png" alt="Logo" class="mx-auto h-14 w-auto object-contain mb-3 drop-shadow-sm">
+                    <h1 class="text-xl sm:text-2xl font-black tracking-tight text-gray-900 uppercase">Hệ Thống Năng Suất</h1>
+                </div>
+
+                <div class="flex border-b border-gray-200 mb-6">
+                    <button @click="authForm.isRegister = false" :class="['flex-1 pb-2.5 text-center font-bold text-sm transition-all cursor-pointer', !authForm.isRegister ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600']">Đăng Nhập</button>
+                    <button @click="authForm.isRegister = true" :class="['flex-1 pb-2.5 text-center font-bold text-sm transition-all cursor-pointer', authForm.isRegister ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600']">Đăng Ký</button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">Mã nhân viên / Tên đăng nhập</label>
+                        <input type="text" v-model="authForm.userId" class="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    </div>
+                    <div v-if="authForm.isRegister">
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">Họ và tên nhân viên</label>
+                        <input type="text" v-model="authForm.employeeName" class="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">Mật khẩu</label>
+                        <input type="password" v-model="authForm.password" class="w-full px-3.5 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    </div>
+                    <button @click="handleAuth" :disabled="isLoading" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm transition-colors disabled:bg-blue-400 cursor-pointer mt-2">
+                        {{ isLoading ? 'Đang xử lý...' : (authForm.isRegister ? 'ĐĂNG KÝ NGAY' : 'ĐĂNG NHẬP') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH DASHBOARD -->
+        <div v-if="currentScreen === 'dashboard'" class="flex-1 flex flex-col p-2.5 sm:p-6 max-w-7xl w-full mx-auto space-y-4 sm:space-y-6">
+            
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-4 w-full md:w-auto">
+                    <div class="flex items-center gap-3 pr-2 sm:border-r border-gray-200">
+                        <img src="logo.png" alt="Logo" class="h-9 w-auto object-contain">
+                        <div>
+                            <span class="text-[9px] text-gray-400 uppercase font-black tracking-wider block">TÀI KHOẢN:</span>
+                            <span class="text-sm font-bold text-gray-900 block leading-tight">{{ user?.employee_name }}</span>
+                        </div>
+                    </div>
+                    
+                    <div v-if="user?.is_admin" class="flex flex-col flex-1 sm:flex-initial">
+                        <span class="text-[9px] text-gray-400 uppercase font-black tracking-wider mb-1">BỘ LỌC NHÂN VIÊN:</span>
+                        <select v-model="adminFilter.selectedUser" @change="handleAdminChange" class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
+                            <option value="ALL">⭐ XEM TẤT CẢ ANH EM</option>
+                            <option v-for="name in uniqueEmployees" :key="name" :value="name">{{ name }}</option>
+                        </select>
+                    </div>
+
+                    <div class="flex flex-col flex-1 sm:flex-initial">
+                        <span class="text-[9px] text-gray-400 uppercase font-black tracking-wider mb-1">BỘ LỌC NGÀY:</span>
+                        <div class="flex flex-col">
+                          <label class="text-xs text-gray-500 font-medium mb-1">Chọn Tháng</label>
+                          <select v-model="selectedMonthFilter" @change="handleMonthChange" class="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-cyan-500">
+                            <option value="ALL">Tất cả các tháng</option>
+                            <option v-for="m in uniqueMonths" :key="m" :value="m">Tháng {{ m }}</option>
+                          </select>
+                        </div>
+                        <select v-model="selectedDateFilter" @change="handleDateChange" class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[140px] w-full sm:w-auto">
+                            <option value="ALL">Tất cả Ngày</option>
+                            <option v-for="date in uniqueDates" :key="date" :value="date">{{ date }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- THANH HÀNH ĐỘNG HỆ THỐNG -->
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end border-t border-gray-100 pt-3 md:pt-0 md:border-none">
+                    <!-- NÚT MỚI: XEM NĂNG SUẤT (CHUYỂN HƯỚNG VERCEL) -->
+                    <a href="https://quan-ly-nang-suat.vercel.app/" target="_blank" class="flex-1 sm:flex-initial px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer">
+                        📊 Xem năng suất
+                    </a>
+                    
+                    <button @click="refreshAll" :disabled="isLoading" class="flex-1 sm:flex-initial px-4 py-1.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50">
+                        <span v-if="isLoading">🔄 Đang tải...</span>
+                        <span v-else>💾 Làm mới</span>
+                    </button>
+                    <button @click="handleLogout" class="px-4 py-1.5 border border-red-200 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition-colors cursor-pointer">Đăng xuất</button>
+                </div>
+            </div>
+
+            <!-- BẢNG ĐƠN GIÁ -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200/80">
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                    <span class="text-xs font-black text-gray-900 tracking-wider uppercase">💰 BẢNG ĐƠN GIÁ CÁCH TÍNH THU NHẬP</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Đổ bao tải</span>
+                        <span class="text-xs font-black text-gray-800 mt-1">55 đ<span class="text-[10px] font-normal text-gray-400">/đơn</span></span>
+                    </div>
+                    <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Cấp đơn - Feeder</span>
+                        <span class="text-xs font-black text-gray-800 mt-1">54 đ<span class="text-[10px] font-normal text-gray-400">/đơn</span></span>
+                    </div>
+                    <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Đóng kiện - Chute</span>
+                        <span class="text-xs font-black text-gray-800 mt-1">64 đ<span class="text-[10px] font-normal text-gray-400">/đơn</span></span>
+                    </div>
+                    <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Phân kiện năng suất</span>
+                        <span class="text-xs font-black text-gray-800 mt-1">170 đ<span class="text-[10px] font-normal text-gray-400">/đơn</span></span>
+                    </div>
+                    <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Rã kiện Manual</span>
+                        <span class="text-xs font-black text-gray-800 mt-1">95 đ<span class="text-[10px] font-normal text-gray-400">/đơn</span></span>
+                    </div>
+                    <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Đóng kiện Manual</span>
+                        <span class="text-xs font-black text-gray-800 mt-1">115 đ<span class="text-[10px] font-normal text-gray-400">/đơn</span></span>
+                    </div>
+                    <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Nhập kiện</span>
+                        <span class="text-xs font-black text-gray-800 mt-1">70 đ<span class="text-[10px] font-normal text-gray-400">/đơn</span></span>
+                    </div>
+                    <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Xuất kiện</span>
+                        <span class="text-xs font-black text-gray-800 mt-1">82 đ<span class="text-[10px] font-normal text-gray-400">/đơn</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BỂ THỐNG KÊ CHI TIẾT VÀ BẢNG THU NHẬP -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                <div class="lg:col-span-3 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/80 flex flex-col justify-between min-h-[220px] sm:min-h-[280px]">
+                    <div class="w-full h-[180px] sm:h-[240px]">
+                        <canvas id="productivityChart"></canvas>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-gray-100 w-full grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div class="bg-gray-50/60 p-2.5 rounded-xl border border-gray-100/70">
+                            <span class="text-gray-400 block font-medium mb-0.5">💵 Lương TB / ngày:</span>
+                            <span class="font-black text-gray-900 text-sm">{{ (aiInsights.avgEarningsPerDay || 0).toLocaleString('vi-VN') }} đ</span>
+                        </div>
+                        <div class="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100/50">
+                            <span class="text-emerald-600 block font-bold mb-0.5">🚀 Năng suất cao nhất:</span>
+                            <span class="font-black text-emerald-700 text-sm" :title="aiInsights.maxDate">{{ aiInsights.maxDate !== 'N/A' ? aiInsights.maxDate : 'Chưa có' }}</span>
+                        </div>
+                        <div class="bg-rose-50/60 p-2.5 rounded-xl border border-rose-100/50">
+                            <span class="text-rose-600 block font-bold mb-0.5">📉 Năng suất thấp nhất:</span>
+                            <span class="font-black text-rose-700 text-sm" :title="aiInsights.minDate">{{ aiInsights.minDate !== 'N/A' ? aiInsights.minDate : 'Chưa có' }}</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl border flex flex-col justify-center" :class="aiInsights.trendClass">
+                            <span class="text-gray-500 block font-medium mb-0.5">📅 Đánh giá theo tuần:</span>
+                            <span class="font-black text-sm">{{ aiInsights.trendText }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-1 gap-4 w-full">
+                    <div class="bg-white p-3 sm:p-5 rounded-2xl shadow-sm border border-gray-200/80 border-l-4 border-gray-900 flex flex-col justify-center">
+                        <p class="text-[10px] text-gray-400 uppercase font-black tracking-wider">SỐ NGÀY THEO LỌC</p>
+                        <h2 class="text-base sm:text-2xl font-black text-gray-900 mt-1 leading-tight">{{ totalUniqueDaysCount || 0 }} Ngày</h2>
+                    </div>
+                    <div class="bg-white p-3 sm:p-5 rounded-2xl shadow-sm border border-gray-200/80 border-l-4 border-emerald-500 flex flex-col justify-center">
+                        <p class="text-[10px] text-gray-400 uppercase font-black tracking-wider">TỔNG THU NHẬP</p>
+                        <h2 class="text-base sm:text-2xl font-black text-emerald-600 mt-1 leading-tight break-all">{{ (totalEarningsAllData || 0).toLocaleString('vi-VN') }} đ</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BẢNG TỔNG HỢP -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden flex flex-col justify-between">
+                <div>
+                    <div class="p-4 border-b border-gray-100 bg-gray-50/70">
+                        <h2 class="font-black uppercase text-xs tracking-wider text-gray-700">⚡ NĂNG SUẤT TỔNG HỢP <span class="text-[10px] text-gray-400 font-normal normal-case">(Nhấn tiêu đề để sắp xếp)</span></h2>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse table-fixed min-w-[340px]">
+                            <thead>
+                                <tr class="bg-gray-900 text-white uppercase text-[9px] sm:text-[10px] font-bold tracking-wider select-none">
+                                    <th class="px-2 sm:px-5 py-3 text-center w-[10%] sm:w-16">STT</th>
+                                    <th @click="sortSummary('ngay_chuan')" class="px-2 sm:px-5 py-3 cursor-pointer hover:bg-gray-800 transition-colors w-[22%] sm:w-32">Ngày <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.summary.column !== 'ngay_chuan' ? '↕' : (sortState.summary.ascending ? '▲' : '▼') }}</span></th>
+                                    <th @click="sortSummary('nhan_vien')" class="px-2 sm:px-5 py-3 cursor-pointer hover:bg-gray-800 transition-colors w-[30%] sm:w-1/4">Nhân viên <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.summary.column !== 'nhan_vien' ? '↕' : (sortState.summary.ascending ? '▲' : '▼') }}</span></th>
+                                    <th @click="sortSummary('thao_tac')" class="px-2 sm:px-5 py-3 cursor-pointer hover:bg-gray-800 transition-colors w-[23%] sm:w-2/5">Thao Tác <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.summary.column !== 'thao_tac' ? '↕' : (sortState.summary.ascending ? '▲' : '▼') }}</span></th>
+                                    <th @click="sortSummary('sl_stops_cn')" class="px-2 sm:px-5 py-3 text-right cursor-pointer hover:bg-gray-800 transition-colors w-[15%] sm:w-32">Stops <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.summary.column !== 'sl_stops_cn' ? '↕' : (sortState.summary.ascending ? '▲' : '▼') }}</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 text-xs sm:text-sm">
+                                <tr v-for="(item, index) in summaryList" :key="'sum-'+index" class="hover:bg-gray-50/60 transition-colors">
+                                    <td class="px-2 sm:px-5 py-2.5 text-center text-gray-400 font-mono text-[10px] sm:text-xs">{{ (summaryPagination.page - 1) * summaryPagination.pageSize + index + 1 }}</td>
+                                    <td class="px-2 sm:px-5 py-2.5 text-gray-600 font-mono text-[10px] sm:text-xs tracking-tighter sm:tracking-normal">{{ item.ngay_chuan }}</td>
+                                    <td class="px-2 sm:px-5 py-2.5 font-bold text-gray-800 break-words whitespace-normal leading-tight sm:leading-normal">{{ item.nhan_vien }}</td>
+                                    <td class="px-2 sm:px-5 py-2.5 font-semibold text-gray-500 break-words whitespace-normal leading-tight sm:leading-normal">{{ item.thao_tac }}</td>
+                                    <td class="px-2 sm:px-5 py-2.5 text-right font-black text-blue-600 font-mono text-xs sm:text-sm">{{ Number(item.sl_stops_cn || 0).toLocaleString('vi-VN') }}</td>
+                                </tr>
+                                <tr v-if="summaryList.length === 0">
+                                    <td colspan="5" class="px-5 py-8 text-center text-gray-400 font-medium">Không có dữ liệu phù hợp bộ lọc.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-500 font-medium">
+                    <div>Trang {{ summaryPagination.page }} / {{ totalSummaryPages }} <span class="hidden sm:inline">({{ totalSummaryRows }} kết quả nhóm)</span></div>
+                    <div class="flex items-center gap-1 w-full sm:w-auto justify-end">
+                        <button @click="changeSummaryPage(-1)" :disabled="summaryPagination.page === 1" class="flex-1 sm:flex-initial p-1.5 px-4 border border-gray-200 rounded-xl bg-white disabled:opacity-40 cursor-pointer shadow-sm hover:bg-gray-50 font-bold transition-all">◀ Trước</button>
+                        <button @click="changeSummaryPage(1)" :disabled="summaryPagination.page === totalSummaryPages" class="flex-1 sm:flex-initial p-1.5 px-4 border border-gray-200 rounded-xl bg-white disabled:opacity-40 cursor-pointer shadow-sm hover:bg-gray-50 font-bold transition-all">Sau ▶</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BẢNG CHI TIẾT THEO GIỜ -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden flex flex-col justify-between">
+                <div>
+                    <div class="p-4 border-b border-gray-100 bg-gray-50/70">
+                        <h2 class="font-black uppercase text-xs tracking-wider text-gray-700">🕒 CHI TIẾT THEO GIỜ <span class="text-[10px] text-gray-400 font-normal normal-case">(Nhấn tiêu đề để sắp xếp)</span></h2>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse table-fixed min-w-[350px]">
+                            <thead>
+                                <tr class="bg-gray-900 text-white uppercase text-[9px] sm:text-[10px] font-bold tracking-wider select-none">
+                                    <th class="px-1 sm:px-5 py-3 text-center w-[9%] sm:w-16">STT</th>
+                                    <th @click="sortDetail('ngay_chuan')" class="px-1.5 sm:px-5 py-3 cursor-pointer hover:bg-gray-800 transition-colors w-[21%] sm:w-32">Ngày <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.detail.column !== 'ngay_chuan' ? '↕' : (sortState.detail.ascending ? '▲' : '▼') }}</span></th>
+                                    <th @click="sortDetail('nhan_vien')" class="px-1.5 sm:px-5 py-3 cursor-pointer hover:bg-gray-800 transition-colors w-[26%] sm:w-1/4">Nhân viên <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.detail.column !== 'nhan_vien' ? '↕' : (sortState.detail.ascending ? '▲' : '▼') }}</span></th>
+                                    <th @click="sortDetail('moc_gio')" class="px-1 sm:px-5 py-3 text-center cursor-pointer hover:bg-gray-800 transition-colors w-[16%] sm:w-28">Giờ <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.detail.column !== 'moc_gio' ? '↕' : (sortState.detail.ascending ? '▲' : '▼') }}</span></th>
+                                    <th @click="sortDetail('thao_tac')" class="px-1.5 sm:px-5 py-3 cursor-pointer hover:bg-gray-800 transition-colors w-[15%] sm:w-1/3">Thao Tác <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.detail.column !== 'thao_tac' ? '↕' : (sortState.detail.ascending ? '▲' : '▼') }}</span></th>
+                                    <th @click="sortDetail('sl_stops_cn')" class="px-1.5 sm:px-5 py-3 text-right cursor-pointer hover:bg-gray-800 transition-colors w-[13%] sm:w-32">Stops <span class="text-gray-400 text-[8px] sm:text-[9px]">{{ sortState.detail.column !== 'sl_stops_cn' ? '↕' : (sortState.detail.ascending ? '▲' : '▼') }}</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 text-xs sm:text-sm">
+                                <tr v-for="(item, index) in detailList" :key="'det-'+index" class="hover:bg-gray-50/60 transition-colors">
+                                    <td class="px-1 sm:px-5 py-2.5 text-center text-gray-400 font-mono text-[10px] sm:text-xs">{{ (detailPagination.page - 1) * detailPagination.pageSize + index + 1 }}</td>
+                                    <td class="px-1.5 sm:px-5 py-2.5 text-gray-600 font-mono text-[10px] sm:text-xs tracking-tighter sm:tracking-normal">{{ item.ngay_chuan }}</td>
+                                    <td class="px-1.5 sm:px-5 py-2.5 font-bold text-gray-800 break-words whitespace-normal leading-tight sm:leading-normal">{{ item.nhan_vien }}</td>
+                                    <td class="px-1 sm:px-5 py-2.5 text-center font-black text-gray-700 font-mono text-[10px] sm:text-xs"><span class="bg-gray-100 px-1 sm:px-2 py-0.5 rounded border border-gray-200/50">{{ item.moc_gio }}</span></td>
+                                    <td class="px-1.5 sm:px-5 py-2.5 font-semibold text-gray-500 break-words whitespace-normal leading-tight sm:leading-normal">{{ item.thao_tac }}</td>
+                                    <td class="px-1.5 sm:px-5 py-2.5 text-right font-black text-emerald-600 font-mono text-xs sm:text-sm">{{ Number(item.sl_stops_cn || 0).toLocaleString('vi-VN') }}</td>
+                                </tr>
+                                <tr v-if="detailList.length === 0">
+                                    <td colspan="6" class="px-5 py-8 text-center text-gray-400 font-medium">Không có dữ liệu phù hợp bộ lọc.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-500 font-medium">
+                    <div>Trang {{ detailPagination.page }} / {{ totalDetailPages }} <span class="hidden sm:inline">({{ totalDetailRows }} dòng gốc)</span></div>
+                    <div class="flex items-center gap-1 w-full sm:w-auto justify-end">
+                        <button @click="changeDetailPage(-1)" :disabled="detailPagination.page === 1" class="flex-1 sm:flex-initial p-1.5 px-4 border border-gray-200 rounded-xl bg-white disabled:opacity-40 cursor-pointer shadow-sm hover:bg-gray-50 font-bold transition-all">◀ Trước</button>
+                        <button @click="changeDetailPage(1)" :disabled="detailPagination.page === totalDetailPages" class="flex-1 sm:flex-initial p-1.5 px-4 border border-gray-200 rounded-xl bg-white disabled:opacity-40 cursor-pointer shadow-sm hover:bg-gray-50 font-bold transition-all">Sau ▶</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="app.js"></script>
 </body>
 </html>
