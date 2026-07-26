@@ -111,8 +111,13 @@
         }
 
         function App() {
-          const [activeTab, setActiveTab] = React.useState('lich-lam-viec');
-          const [isMenuOpen, setIsMenuOpen] = React.useState(false); // Quản lý trạng thái đóng/mở Menu
+          // Trạng thái Đăng nhập: 'none' (chưa chọn), 'guest' (Khách), 'user' (Đã đăng nhập)
+          const [userRole, setUserRole] = React.useState('none');
+          const [usernameInput, setUsernameInput] = React.useState('');
+          const [passwordInput, setPasswordInput] = React.useState('');
+
+          const [activeTab, setActiveTab] = React.useState('vi-pham');
+          const [isMenuOpen, setIsMenuOpen] = React.useState(false);
           const [filterName, setFilterName] = React.useState('');
           const [filterMonth, setFilterMonth] = React.useState('');
 
@@ -223,6 +228,21 @@
           };
 
           React.useEffect(() => { loadAllData(false); }, [loadAllData]);
+
+          const handleLoginSubmit = (eEvt) => {
+            eEvt.preventDefault();
+            if (usernameInput.trim()) {
+              setUserRole('user');
+              setActiveTab('lich-lam-viec');
+            } else {
+              alert('Vui lòng nhập tên tài khoản');
+            }
+          };
+
+          const handleGuestSelect = () => {
+            setUserRole('guest');
+            setActiveTab('vi-pham');
+          };
 
           const handleInputChange = React.useCallback((key, value, isNum = false) => {
             setInputs(p => ({ ...p, [key]: isNum ? (parseFloat(value) || 0) : value }));
@@ -382,25 +402,86 @@
             setSelectedLichDate(curr.toISOString().split('T')[0]);
           };
 
-          const menuItems = [
-            ['lich-lam-viec', 'Bảng Lịch Tuần 📅'],
-            ['report-daily', 'Report & Tự Tính 📊'],
-            ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️'],
-            ['bien-ban', 'Biên Bản Quy Trình 📝']
-          ];
+          // Danh sách tùy chọn Menu dựa theo quyền sử dụng
+          const availableMenuItems = React.useMemo(() => {
+            const fullList = [
+              ['lich-lam-viec', 'Bảng Lịch Tuần 📅', false],
+              ['report-daily', 'Report & Tự Tính 📊', false],
+              ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️', true],
+              ['bien-ban', 'Biên Bản Quy Trình 📝', true]
+            ];
+
+            if (userRole === 'user') {
+              return fullList;
+            } else {
+              return fullList.filter(item => item[2] === true);
+            }
+          }, [userRole]);
+
+          // GIAO DIỆN CHỌN ĐĂNG NHẬP HOẶC KHÁCH BẢO MẬT
+          if (userRole === 'none') {
+            return e('div', { className: 'min-h-screen flex items-center justify-center bg-slate-100 p-4' },
+              e('div', { className: 'max-w-md w-full bg-white rounded-xl shadow-lg border border-orange-100 p-6 space-y-6' },
+                e('div', { className: 'text-center space-y-2' },
+                  e('div', { className: 'w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto text-white font-bold text-xl shadow-md' }, 'S'),
+                  e('h2', { className: 'text-lg font-bold text-slate-800 uppercase tracking-wide' }, 'Hệ Thống Điều Hành Sort KTC 01'),
+                  e('p', { className: 'text-xs text-slate-500 font-bold' }, 'Vui lòng chọn chế độ truy cập hệ thống')
+                ),
+
+                e('form', { onSubmit: handleLoginSubmit, className: 'space-y-3 bg-orange-50/40 p-4 rounded-lg border border-orange-100' },
+                  e('div', { className: 'font-bold text-xs text-orange-900 border-b border-orange-200 pb-1' }, '🔐 Đăng nhập tài khoản (Đầy đủ quyền)'),
+                  e('div', null,
+                    e('label', { className: 'block text-[10px] font-bold text-slate-600 mb-1' }, 'Tên tài khoản / Mã nhân viên:'),
+                    e('input', {
+                      type: 'text',
+                      required: true,
+                      placeholder: 'Nhập tên tài khoản...',
+                      className: 'w-full p-2 border border-slate-300 rounded font-bold text-slate-700 text-xs focus:outline-none focus:border-orange-500 bg-white',
+                      value: usernameInput,
+                      onChange: ev => setUsernameInput(ev.target.value)
+                    })
+                  ),
+                  e('div', null,
+                    e('label', { className: 'block text-[10px] font-bold text-slate-600 mb-1' }, 'Mật khẩu:'),
+                    e('input', {
+                      type: 'password',
+                      placeholder: '••••••••',
+                      className: 'w-full p-2 border border-slate-300 rounded font-bold text-slate-700 text-xs focus:outline-none focus:border-orange-500 bg-white',
+                      value: passwordInput,
+                      onChange: ev => setPasswordInput(ev.target.value)
+                    })
+                  ),
+                  e('button', {
+                    type: 'submit',
+                    className: 'w-full py-2 bg-[#ff7300] hover:bg-orange-600 text-white font-bold rounded shadow transition text-xs uppercase tracking-wider'
+                  }, 'Đăng Nhập Quản Lý')
+                ),
+
+                e('div', { className: 'relative flex py-1 items-center' },
+                  e('div', { className: 'flex-grow border-t border-slate-200' }),
+                  e('span', { className: 'flex-shrink mx-3 text-slate-400 font-bold text-[10px] uppercase' }, 'Hoặc'),
+                  e('div', { className: 'flex-grow border-t border-slate-200' })
+                ),
+
+                e('div', { className: 'text-center' },
+                  e('button', {
+                    type: 'button',
+                    onClick: handleGuestSelect,
+                    className: 'w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded shadow transition text-xs uppercase tracking-wider flex items-center justify-center gap-1.5'
+                  }, '👁️ Truy cập Chế Độ Khách (Guest)'),
+                  e('p', { className: 'text-[10px] text-slate-500 font-bold mt-2 italic' }, '* Chế độ Khách chỉ cho phép xem Dữ liệu Vi phạm & Biên bản quy trình.')
+                )
+              )
+            );
+          }
 
           return e('div', { className: 'min-h-screen flex flex-col bg-slate-50' },
-            // HEADER CÓ NÚT MENU 3 GẠCH GÓC TRÊN BÊN PHẢI
+            // HEADER CÓ HAMBURGER MENU Ở BÊN TRÁI
             e('header', { className: 'bg-[#ff7300] text-white p-2 flex justify-between items-center shadow-md relative z-50' },
-              e('h1', { className: 'text-xs font-bold tracking-wider uppercase' }, 'SORT KTC 01 OPERATIONAL CENTER'),
               
-              e('div', { className: 'flex items-center gap-2' },
-                e('button', { 
-                  className: 'text-[10px] font-bold bg-white text-orange-700 px-2 py-1 rounded shadow hover:bg-orange-100 transition active:scale-95', 
-                  onClick: () => loadAllData(true)
-                }, isLoading ? '⏳ Đang tải...' : '⚡ Ép tải lại'),
-
-                // NÚT 3 GẠCH (HAMBURGER BUTTON)
+              // KHU VỰC BÊN TRÁI: HAMBURGER MENU & TIÊU ĐỀ
+              e('div', { className: 'flex items-center gap-2.5' },
+                // HAMBURGER MENU 3 GẠCH (GÓC TRÊN BÊN TRÁI)
                 e('div', { className: 'relative' },
                   e('button', {
                     className: 'p-1.5 rounded hover:bg-orange-600 transition flex flex-col justify-center items-center gap-1 w-7 h-7 bg-orange-700/60 border border-orange-400/40',
@@ -411,26 +492,51 @@
                     e('span', { className: `w-4 h-0.5 bg-white transition-all ${isMenuOpen ? '-rotate-45 -translate-y-1' : ''}` })
                   ),
 
-                  // DROPDOWN MENU XỔ RA KHI NHẤN VÀO
-                  isMenuOpen && e('div', { className: 'absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl border border-slate-200 py-1 text-slate-800 z-50' },
-                    menuItems.map(item => e('button', {
+                  // DROPDOWN MENU XỔ RA
+                  isMenuOpen && e('div', { className: 'absolute left-0 mt-2 w-52 bg-white rounded-md shadow-xl border border-slate-200 py-1 text-slate-800 z-50' },
+                    e('div', { className: 'px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b uppercase' }, 
+                      userRole === 'user' ? 'Danh Mục Quản Lý' : 'Danh Mục Khách Xem'
+                    ),
+                    availableMenuItems.map(item => e('button', {
                       key: item[0],
                       className: `w-full text-left px-3 py-2 text-[11px] font-bold flex items-center justify-between hover:bg-orange-50 hover:text-orange-600 transition-colors ${activeTab === item[0] ? 'bg-orange-50 text-orange-600 border-l-4 border-orange-500' : ''}`,
                       onClick: () => {
                         setActiveTab(item[0]);
                         setFilterMonth('');
                         setFilterName('');
-                        setIsMenuOpen(false); // Tự động đóng menu sau khi chọn
+                        setIsMenuOpen(false);
                       }
                     }, item[1]))
                   )
+                ),
+
+                e('h1', { className: 'text-xs font-bold tracking-wider uppercase' }, 'SORT KTC 01 OPERATIONAL CENTER')
+              ),
+              
+              // KHU VỰC BÊN PHẢI: NÚT ÉP TẢI VÀ THÔNG TIN TÀI KHOẢN
+              e('div', { className: 'flex items-center gap-2' },
+                e('button', { 
+                  className: 'text-[10px] font-bold bg-white text-orange-700 px-2 py-1 rounded shadow hover:bg-orange-100 transition active:scale-95', 
+                  onClick: () => loadAllData(true)
+                }, isLoading ? '⏳ Đang tải...' : '⚡ Ép tải lại'),
+
+                e('button', {
+                  className: 'text-[10px] font-bold bg-orange-800/80 hover:bg-orange-900 text-white px-2 py-1 rounded border border-orange-400/40 transition flex items-center gap-1',
+                  onClick: () => {
+                    if (confirm('Bạn có muốn đăng xuất hoặc đổi chế độ truy cập?')) {
+                      setUserRole('none');
+                    }
+                  }
+                }, 
+                  userRole === 'user' ? `👤 ${usernameInput}` : '👁️ Khách',
+                  e('span', { className: 'text-[9px] opacity-75' }, '(Thoát)')
                 )
               )
             ),
 
             e('main', { className: 'p-2 w-full max-w-[100%] mx-auto flex-1 space-y-3 overflow-x-hidden' },
               
-              activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 shadow-sm space-y-2' },
+              userRole === 'user' && activeTab === 'lich-lam-viec' && e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 shadow-sm space-y-2' },
                 e('div', { className: 'flex flex-wrap justify-between items-center border-b border-orange-50 pb-1.5 gap-2' },
                   e('div', { className: 'flex items-center gap-2' },
                     e('h2', { className: 'font-bold text-xs text-orange-800 uppercase tracking-wide' }, 'Lịch Trực Ban Ca'),
@@ -468,7 +574,7 @@
                 )
               ),
 
-              activeTab === 'report-daily' && e('div', { className: 'space-y-2' },
+              userRole === 'user' && activeTab === 'report-daily' && e('div', { className: 'space-y-2' },
                 e('div', { className: 'bg-white rounded-lg shadow-sm p-0.5 overflow-x-auto' },
                   e('div', { className: 'w-full min-w-[950px]' },
                     e('table', { className: 'excel-table text-center text-[10px] font-bold bg-white text-black' },
