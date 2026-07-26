@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Điều Hành Sort KTC 01</title>
+    <link rel="icon" href="data:,"> <!-- Sửa lỗi favicon 404 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -136,13 +137,13 @@
             phat_sinh: 'Không'
           });
 
-          // TẢI DỮ LIỆU SONG SONG (PARALLEL FETCHING - RÚT NGẮN THỜI GIAN LOAD)
+          // TẢI DỮ LIỆU SONG SONG VỚI DẤU & CHUẨN URL
           const loadAllData = React.useCallback(async () => {
             try {
               setIsLoading(true);
-              const cacheBuster = `?t=${Date.now()}`;
+              // Sửa dấu ? thành dấu & để nối tham số hợp lệ
+              const cacheBuster = `&t=${Date.now()}`;
 
-              // Gọi 3 API cùng 1 lúc
               const [resLich, resVi, resBb] = await Promise.all([
                 fetch(URL_LICH_LAM_VIEC + cacheBuster),
                 fetch(URL_VI_PHAM + cacheBuster),
@@ -288,7 +289,6 @@
             return allLichHeaders.slice(0, 7);
           }, [allLichHeaders, selectedLichDate]);
 
-          // BỔ SUNG TÍNH TOÁN TỈ LỆ TĂNG GIẢM THÁNG TRƯỚC/THÁNG NÀY
           const monthlyStats = React.useMemo(() => {
             const src = activeTab === 'vi-pham' ? violationData : bienbanData;
             const stats = {};
@@ -334,7 +334,6 @@
                 .slice(0, 3)
                 .map(([name, qty]) => ({ name, qty }));
 
-              // Tính tỉ lệ % tăng/giảm so với tháng trước
               let trendText = "Mới";
               let trendClass = "text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded";
 
@@ -398,8 +397,8 @@
                 e('button', { 
                   className: 'text-[10px] font-bold bg-white text-orange-700 px-2 py-0.5 rounded shadow hover:bg-orange-100 transition active:scale-95', 
                   onClick: loadAllData 
-                }, isLoading ? '⏳ Đang tải nhanh...' : '🔄 Tải lại dữ liệu'),
-                e('span', { className: 'text-[10px] font-mono bg-orange-700/40 px-1.5 py-0.5 rounded text-white border border-orange-400/30' }, 'v2.1 Tối ưu tốc độ')
+                }, isLoading ? '⏳ Đang tải...' : '🔄 Tải lại dữ liệu'),
+                e('span', { className: 'text-[10px] font-mono bg-orange-700/40 px-1.5 py-0.5 rounded text-white border border-orange-400/30' }, 'v2.2 Fixed URL')
               )
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-500 text-center text-[11px] overflow-x-auto shadow-sm' },
