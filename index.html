@@ -33,17 +33,11 @@
             display: block;
             height: auto;
         }
-        .note-textarea:focus {
-            outline: none;
+        .note-textarea:focus { outline: none; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
         }
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
+        input[type=number] { -moz-appearance: textfield; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 text-[11px] antialiased">
@@ -121,10 +115,7 @@
 
           const [allLichHeaders, setAllLichHeaders] = React.useState([]); 
           const [lichRows, setLichRows] = React.useState([]);       
-          const [selectedLichDate, setSelectedLichDate] = React.useState(() => {
-            const today = new Date();
-            return today.toISOString().split('T')[0];
-          });
+          const [selectedLichDate, setSelectedLichDate] = React.useState(() => new Date().toISOString().split('T')[0]);
 
           const [violationData, setViolationData] = React.useState([]);
           const [bienbanData, setBienbanData] = React.useState([]);
@@ -145,16 +136,27 @@
             phat_sinh: 'Không'
           });
 
-          // HÀM TẢI DỮ LIỆU CHỐNG CACHE
+          // TẢI DỮ LIỆU SONG SONG (PARALLEL FETCHING - RÚT NGẮN THỜI GIAN LOAD)
           const loadAllData = React.useCallback(async () => {
             try {
               setIsLoading(true);
-              const cacheBuster = `&_nocache=${Date.now()}`;
+              const cacheBuster = `?t=${Date.now()}`;
 
-              // Load Lịch Làm Việc
-              const resLich = await fetch(URL_LICH_LAM_VIEC + cacheBuster, { cache: "no-store" });
-              const rawLich = parseCSV(await resLich.text());
-              
+              // Gọi 3 API cùng 1 lúc
+              const [resLich, resVi, resBb] = await Promise.all([
+                fetch(URL_LICH_LAM_VIEC + cacheBuster),
+                fetch(URL_VI_PHAM + cacheBuster),
+                fetch(URL_BIEN_BAN + cacheBuster)
+              ]);
+
+              const [textLich, textVi, textBb] = await Promise.all([
+                resLich.text(),
+                resVi.text(),
+                resBb.text()
+              ]);
+
+              // 1. Xử lý Lịch làm việc
+              const rawLich = parseCSV(textLich);
               if (rawLich.length > 4) {
                 let dates = rawLich[2] || [];
                 let days = rawLich[3] || [];
@@ -177,9 +179,8 @@
                 setLichRows(parsedStaff);
               }
 
-              // Load Vi Phạm
-              const resVi = await fetch(URL_VI_PHAM + cacheBuster, { cache: "no-store" });
-              const rowsVi = parseCSV(await resVi.text());
+              // 2. Xử lý Vi Phạm
+              const rowsVi = parseCSV(textVi);
               let parsedVi = [];
               rowsVi.forEach((row, idx) => {
                 if (idx > 0 && row[2]) {
@@ -191,9 +192,8 @@
               });
               setViolationData(parsedVi);
 
-              // Load Biên Bản
-              const resBb = await fetch(URL_BIEN_BAN + cacheBuster, { cache: "no-store" });
-              const rowsBb = parseCSV(await resBb.text());
+              // 3. Xử lý Biên Bản
+              const rowsBb = parseCSV(textBb);
               let parsedBb = [];
               rowsBb.forEach((row, idx) => {
                 if (idx > 0 && row[2]) {
@@ -206,7 +206,7 @@
               setBienbanData(parsedBb);
               setIsLoading(false);
             } catch (err) {
-              console.error(err);
+              console.error("Lỗi khi tải dữ liệu:", err);
               setIsLoading(false);
             }
           }, []);
@@ -249,8 +249,6 @@
             const tile_fl_had = i.skh_fl_had > 0 ? Math.round((i.sdung_fl_had / i.skh_fl_had) * 100) : 0;
             const tile_fl_viec = i.skh_fl_viec > 0 ? Math.round((i.sdung_fl_viec / i.skh_fl_viec) * 100) : 0;
 
-            const total_fl_skh = i.skh_fl_had + i.skh_fl_viec;
-            const total_fl_sdung = i.sdung_fl_had + i.sdung_fl_viec;
             const tile_tong = total_skh > 0 ? Math.round((total_sdung / total_skh) * 100) : 0;
             const nang_suat_bao_cao = total_gctt > 0 ? Math.round(act_don / total_gctt) : 0;
 
@@ -290,6 +288,7 @@
             return allLichHeaders.slice(0, 7);
           }, [allLichHeaders, selectedLichDate]);
 
+          // BỔ SUNG TÍNH TOÁN TỈ LỆ TĂNG GIẢM THÁNG TRƯỚC/THÁNG NÀY
           const monthlyStats = React.useMemo(() => {
             const src = activeTab === 'vi-pham' ? violationData : bienbanData;
             const stats = {};
@@ -315,8 +314,10 @@
               }
             });
 
+            const sortedMonths = Object.keys(stats).map(Number).sort((a, b) => a - b);
             const result = {};
-            Object.keys(stats).forEach(m => {
+
+            sortedMonths.forEach((m, idx) => {
               const s = stats[m];
               
               let maxDayStr = 'N/A';
@@ -333,10 +334,32 @@
                 .slice(0, 3)
                 .map(([name, qty]) => ({ name, qty }));
 
+              // Tính tỉ lệ % tăng/giảm so với tháng trước
+              let trendText = "Mới";
+              let trendClass = "text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded";
+
+              if (idx > 0) {
+                const prevMonth = sortedMonths[idx - 1];
+                const prevCount = stats[prevMonth].count;
+                if (prevCount > 0) {
+                  const percentChange = Math.round(((s.count - prevCount) / prevCount) * 100);
+                  if (percentChange > 0) {
+                    trendText = `▲ Tăng ${percentChange}%`;
+                    trendClass = "text-red-600 font-bold bg-red-50 border border-red-100 px-1.5 py-0.5 rounded";
+                  } else if (percentChange < 0) {
+                    trendText = `▼ Giảm ${Math.abs(percentChange)}%`;
+                    trendClass = "text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded";
+                  } else {
+                    trendText = "➖ Không đổi";
+                    trendClass = "text-slate-600 font-bold bg-slate-100 px-1.5 py-0.5 rounded";
+                  }
+                }
+              }
+
               result[m] = {
                 count: s.count,
-                trendText: "Ổn định",
-                trendClass: "text-emerald-600 font-bold",
+                trendText,
+                trendClass,
                 maxDayStr,
                 maxDayCount,
                 topErrors: sortedErrors
@@ -375,8 +398,8 @@
                 e('button', { 
                   className: 'text-[10px] font-bold bg-white text-orange-700 px-2 py-0.5 rounded shadow hover:bg-orange-100 transition active:scale-95', 
                   onClick: loadAllData 
-                }, isLoading ? '⏳ Đang tải...' : '🔄 Làm mới Sheet'),
-                e('span', { className: 'text-[10px] font-mono bg-orange-700/40 px-1.5 py-0.5 rounded text-white border border-orange-400/30' }, 'Hệ thống tự động hóa')
+                }, isLoading ? '⏳ Đang tải nhanh...' : '🔄 Tải lại dữ liệu'),
+                e('span', { className: 'text-[10px] font-mono bg-orange-700/40 px-1.5 py-0.5 rounded text-white border border-orange-400/30' }, 'v2.1 Tối ưu tốc độ')
               )
             ),
             e('nav', { className: 'flex bg-white border-b font-bold text-slate-500 text-center text-[11px] overflow-x-auto shadow-sm' },
@@ -391,7 +414,7 @@
                 e('div', { className: 'flex flex-wrap justify-between items-center border-b border-orange-50 pb-1.5 gap-2' },
                   e('div', { className: 'flex items-center gap-2' },
                     e('h2', { className: 'font-bold text-xs text-orange-800 uppercase tracking-wide' }, 'Lịch Trực Ban Ca'),
-                    isLoading && e('span', { className: 'text-[10px] text-orange-600 font-bold animate-pulse' }, '(Đang đồng bộ dữ liệu...)')
+                    isLoading && e('span', { className: 'text-[10px] text-orange-600 font-bold animate-pulse' }, '(Đang tải lại dữ liệu từ Google...)')
                   ),
                   
                   e('div', { className: 'flex items-center gap-2 bg-orange-50 p-1 rounded border border-orange-100 text-[10px]' },
@@ -568,12 +591,12 @@
                 e('div', { className: 'bg-white p-2.5 rounded-lg border border-orange-100 shadow-sm' },
                   e('div', { className: 'mb-2 font-bold text-orange-950 text-[11px] uppercase tracking-wider border-b pb-1.5 border-orange-100 flex justify-between items-center' }, 
                     e('span', null, `📊 THỐNG KÊ BIẾN ĐỘNG & ĐÁNH GIÁ CHẤT LƯỢNG CA VẬN HÀNH`),
-                    e('span', { className: 'text-[9.5px] font-normal text-slate-500 italic uppercase' }, `Tự động cập nhật`)
+                    e('span', { className: 'text-[9.5px] font-normal text-slate-500 italic uppercase' }, `So sánh theo tháng`)
                   ),
                   e('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5' },
                     activeMonthsWithData.length === 0 ? e('div', { className: 'p-4 text-slate-400 italic col-span-full' }, 'Không tìm thấy dữ liệu tháng.') :
                     activeMonthsWithData.map(m => {
-                      const stat = monthlyStats[m] || { count: 0, trendText: "", trendClass: "", maxDayStr: "N/A", maxDayCount: 0, topErrors: [] };
+                      const stat = monthlyStats[m] || { count: 0, trendText: "N/A", trendClass: "", maxDayStr: "N/A", maxDayCount: 0, topErrors: [] };
                       
                       return e('div', { key: m, className: 'p-2 rounded-lg border border-orange-100 bg-orange-50/20 text-[10.5px] transition hover:bg-orange-50 flex flex-col justify-between space-y-1.5 shadow-sm' },
                         e('div', { className: 'flex justify-between items-center border-b border-orange-100/50 pb-1' },
