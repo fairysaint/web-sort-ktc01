@@ -403,11 +403,13 @@
 
           const availableMenuItems = React.useMemo(() => {
             const fullList = [
-              ['lich-lam-viec', 'Bảng Lịch Tuần 📅', false],
-              ['report-daily', 'Report & Tự Tính 📊', false],
-              ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️', true],
-              ['bien-ban', 'Biên Bản Quy Trình 📝', true]
-            ];
+  ['lich-lam-viec', 'Bảng Lịch Tuần 📅', false],
+  ['report-daily', 'Report & Tự Tính 📊', false],
+  ['productivity', 'Quản Lý Năng Suất 🚀', false],
+  ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️', true],
+  ['bien-ban', 'Biên Bản Quy Trình 📝', true]
+  ['productivity', 'Quản Lý Năng Suất 🚀', false],
+];
 
             if (userRole === 'user') {
               return fullList;
@@ -496,11 +498,24 @@
                       key: item[0],
                       className: `w-full text-left px-3 py-2 text-[11px] font-bold flex items-center justify-between hover:bg-orange-50 hover:text-orange-600 transition-colors ${activeTab === item[0] ? 'bg-orange-50 text-orange-600 border-l-4 border-orange-500' : ''}`,
                       onClick: () => {
-                        setActiveTab(item[0]);
-                        setFilterMonth('');
-                        setFilterName('');
-                        setIsMenuOpen(false);
-                      }
+
+    // Chuyển sang hệ thống quản lý năng suất
+    if (item[0] === 'productivity') {
+        onClick: () => {
+    setActiveTab(item[0]);
+    setFilterMonth('');
+    setFilterName('');
+    setIsMenuOpen(false);
+}
+        setIsMenuOpen(false);
+        return;
+    }
+
+    setActiveTab(item[0]);
+    setFilterMonth('');
+    setFilterName('');
+    setIsMenuOpen(false);
+}
                     }, item[1]))
                   )
                 ),
@@ -661,7 +676,22 @@
                   )
                 )
               ),
+userRole === 'user' && activeTab === 'productivity' &&
 
+e('div', {
+    className: 'bg-white rounded-lg border border-orange-100 shadow-sm overflow-hidden'
+},
+
+    e('iframe', {
+        src: 'https://quan-ly-nang-suat.vercel.app/',
+        style: {
+            width: '100%',
+            height: 'calc(100vh - 90px)',
+            border: 'none'
+        }
+    })
+
+),
               // TAB 3 & 4: VI PHẠM & BIÊN BẢN
               (activeTab === 'vi-pham' || activeTab === 'bien-ban') && e('div', { className: 'space-y-3' },
                 
