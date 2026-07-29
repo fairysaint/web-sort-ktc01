@@ -816,7 +816,7 @@
                             e('th', { className: 'p-2 text-center w-16' }, 'Hình Ảnh')
                           )
                         ),
-                        e('tbody", null,
+                        e('tbody', null,
                           filteredRawData.length > 0 ? filteredRawData.map((item, idx) => e('tr', { key: item.id || idx, className: 'border-t border-slate-100 hover:bg-orange-50/30 transition' },
                             e('td', { className: 'p-2 border-r border-slate-100 text-center font-bold text-slate-400' }, idx + 1),
                             e('td', { className: 'p-2 border-r border-slate-100 font-bold text-slate-600' }, item.date),
