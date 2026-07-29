@@ -407,8 +407,7 @@
   ['report-daily', 'Report & Tự Tính 📊', false],
   ['productivity', 'Quản Lý Năng Suất 🚀', false],
   ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️', true],
-  ['bien-ban', 'Biên Bản Quy Trình 📝', true]
-  ['productivity', 'Quản Lý Năng Suất 🚀', false],
+  ['bien-ban', 'Biên Bản Quy Trình 📝', true],
 ];
 
             if (userRole === 'user') {
@@ -500,16 +499,10 @@
                       onClick: () => {
 
     // Chuyển sang hệ thống quản lý năng suất
-    if (item[0] === 'productivity') {
-        onClick: () => {
+  onClick: () => {
     setActiveTab(item[0]);
-    setFilterMonth('');
-    setFilterName('');
     setIsMenuOpen(false);
 }
-        setIsMenuOpen(false);
-        return;
-    }
 
     setActiveTab(item[0]);
     setFilterMonth('');
