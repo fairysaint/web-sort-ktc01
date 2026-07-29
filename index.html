@@ -401,22 +401,21 @@
             setSelectedLichDate(curr.toISOString().split('T')[0]);
           };
 
-          const availableMenuItems = React.useMemo(() => {
-            const fullList = [
-  ['lich-lam-viec', 'Bảng Lịch Tuần 📅', false],
-  ['report-daily', 'Report & Tự Tính 📊', false],
-  ['productivity', 'Quản Lý Năng Suất 🚀', false],
-  ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️', true],
-  ['bien-ban', 'Biên Bản Quy Trình 📝', true],
-];
+         const availableMenuItems = React.useMemo(() => {
 
-            if (userRole === 'user') {
-              return fullList;
-            } else {
-              return fullList.filter(item => item[2] === true);
-            }
-          }, [userRole]);
+    const fullList = [
+        ['lich-lam-viec', 'Bảng Lịch Tuần 📅', false],
+        ['report-daily', 'Report & Tự Tính 📊', false],
+        ['productivity', 'Quản Lý Năng Suất 🚀', false],
+        ['vi-pham', 'Dữ Liệu Vi Phạm ⚠️', true],
+        ['bien-ban', 'Biên Bản Quy Trình 📝', true]
+    ];
 
+    return userRole === 'user'
+        ? fullList
+        : fullList.filter(item => item[2]);
+
+}, [userRole]);
           // CHẾ ĐỘ CHỌN ĐĂNG NHẬP / KHÁCH
           if (userRole === 'none') {
             return e('div', { className: 'min-h-screen flex items-center justify-center bg-slate-100 p-4' },
@@ -500,10 +499,6 @@
 
     // Chuyển sang hệ thống quản lý năng suất
   onClick: () => {
-    setActiveTab(item[0]);
-    setIsMenuOpen(false);
-}
-
     setActiveTab(item[0]);
     setFilterMonth('');
     setFilterName('');
@@ -679,7 +674,7 @@ e('div', {
         src: 'https://quan-ly-nang-suat.vercel.app/',
         style: {
             width: '100%',
-            height: 'calc(100vh - 90px)',
+           height: '900px',
             border: 'none'
         }
     })
