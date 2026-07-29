@@ -6,6 +6,7 @@
     <title>Hệ Thống Điều Hành Sort KTC 01</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <style>
@@ -52,6 +53,13 @@
         const URL_BIEN_BAN      = `https://docs.google.com/spreadsheets/d/e/${SPREADSHEET_ID}/pub?gid=735999237&output=csv`;
 
         const e = React.createElement;
+        const SUPABASE_URL = "https://xxxxxxxx.supabase.co";
+const SUPABASE_KEY = "ANON_KEY";
+
+const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
 
         function parseCSV(text) {
           if (!text) return [];
@@ -228,15 +236,32 @@
 
           React.useEffect(() => { loadAllData(false); }, [loadAllData]);
 
-          const handleLoginSubmit = (eEvt) => {
-            eEvt.preventDefault();
-            if (usernameInput.trim()) {
-              setUserRole('user');
-              setActiveTab('lich-lam-viec');
-            } else {
-              alert('Vui lòng nhập tên tài khoản');
-            }
-          };
+         const handleLoginSubmit = async (eEvt) => {
+
+    eEvt.preventDefault();
+
+    if(usernameInput.trim()==="")
+    {
+        alert("Nhập tài khoản");
+        return;
+    }
+
+    const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("username", usernameInput)
+        .eq("password", passwordInput)
+        .single();
+
+    if(error || !data)
+    {
+        alert("Sai tài khoản hoặc mật khẩu");
+        return;
+    }
+
+    setUserRole(data.role);
+    setActiveTab("lich-lam-viec");
+}
 
           const handleGuestSelect = () => {
             setUserRole('guest');
@@ -495,10 +520,7 @@
                     availableMenuItems.map(item => e('button', {
                       key: item[0],
                       className: `w-full text-left px-3 py-2 text-[11px] font-bold flex items-center justify-between hover:bg-orange-50 hover:text-orange-600 transition-colors ${activeTab === item[0] ? 'bg-orange-50 text-orange-600 border-l-4 border-orange-500' : ''}`,
-                      onClick: () => {
-
-    // Chuyển sang hệ thống quản lý năng suất
-  onClick: () => {
+                     onClick: () => {
     setActiveTab(item[0]);
     setFilterMonth('');
     setFilterName('');
