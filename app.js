@@ -303,7 +303,7 @@ while (hasMore) {
 }
 
 // Gom nhóm bằng hàm dùng chung
-let resultData = this.groupSummaryData(allData);
+let resultData = Utils.groupSummaryData(allData);
       this.totalSummaryRows = resultData.length;
 
       this.calculateInsights(resultData);
