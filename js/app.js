@@ -115,19 +115,19 @@ createApp({
             if (
                 !this.allDatesRaw ||
                 this.allDatesRaw.length === 0
-            )
+            ) {
                 return [];
+            }
 
             let filteredDates = this.allDatesRaw;
 
             if (this.selectedMonthFilter !== "ALL") {
 
-                filteredDates =
-                    this.allDatesRaw.filter(
-                        d =>
-                            Utils.parseMonthYear(d) ===
-                            this.selectedMonthFilter
-                    );
+                filteredDates = this.allDatesRaw.filter(
+                    d =>
+                        Utils.parseMonthYear(d) ===
+                        this.selectedMonthFilter
+                );
 
             }
 
@@ -148,7 +148,7 @@ createApp({
     methods: {
 
         //=========================
-        // Auth
+        // Authentication
         //=========================
         ...AuthMethods,
 
@@ -170,17 +170,7 @@ createApp({
         //=========================
         // Chart
         //=========================
-        ...ChartMethods,
-
-        //=========================
-        // Profile
-        //=========================
-        ...ProfileMethods,
-
-        //=========================
-        // Forgot Password
-        //=========================
-        ...ForgotPasswordMethods
+        ...ChartMethods
 
     }
 
