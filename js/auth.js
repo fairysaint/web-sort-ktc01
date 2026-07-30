@@ -5,7 +5,7 @@
 const AuthMethods = {
 
     // ==========================
-    // Kiểm tra phiên đăng nhập
+    // Kiểm tra Session
     // ==========================
     async checkCurrentSession() {
 
@@ -22,6 +22,7 @@ const AuthMethods = {
             this.currentScreen = "login";
 
         }
+
     },
 
     // ==========================
@@ -29,40 +30,43 @@ const AuthMethods = {
     // ==========================
     async handleAuth() {
 
-        if (!this.authForm.userId || !this.authForm.password) {
+        if (
+            Utils.isEmpty(this.authForm.userId) ||
+            Utils.isEmpty(this.authForm.password)
+        ) {
 
-            alert("Vui lòng điền đầy đủ Mã nhân viên và Mật khẩu!");
+            alert("Vui lòng nhập đầy đủ thông tin.");
+
             return;
 
         }
 
         if (this.authForm.password.length < 6) {
 
-            alert("Mật khẩu phải có ít nhất 6 ký tự!");
+            alert("Mật khẩu phải có ít nhất 6 ký tự.");
+
             return;
 
         }
 
-        const uId = this.authForm.userId.trim();
+        const userId = Utils.cleanString(this.authForm.userId);
 
-        const cleanUid = uId
-            .replace(/[^a-zA-Z0-9]/g, "")
-            .toLowerCase();
-
-        const emailFake = `${cleanUid}@nangsuat.local`;
+        const email =
+            userId.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() +
+            "@nangsuat.local";
 
         this.isLoading = true;
 
         try {
 
-            // ======================
+            //=========================
             // ĐĂNG KÝ
-            // ======================
+            //=========================
             if (this.authForm.isRegister) {
 
-                if (!this.authForm.employeeName.trim()) {
+                if (Utils.isEmpty(this.authForm.employeeName)) {
 
-                    alert("Vui lòng nhập Họ và tên!");
+                    alert("Vui lòng nhập Họ và Tên.");
 
                     this.isLoading = false;
 
@@ -70,20 +74,24 @@ const AuthMethods = {
 
                 }
 
-                const { data, error } =
-                    await _supabase.auth.signUp({
+                const {
+                    data,
+                    error
+                } = await _supabase.auth.signUp({
 
-                        email: emailFake,
+                    email: email,
 
-                        password: this.authForm.password
+                    password: this.authForm.password
 
-                    });
+                });
 
                 if (error) {
 
-                    if (error.message.includes("User already registered")) {
+                    if (
+                        error.message.includes("User already registered")
+                    ) {
 
-                        alert("Mã nhân viên đã tồn tại!");
+                        alert("Mã nhân viên đã tồn tại.");
 
                     } else {
 
@@ -91,84 +99,86 @@ const AuthMethods = {
 
                     }
 
-                    this.isLoading = false;
+                    return;
+
+                }
+
+                const { error: profileError } =
+                    await _supabase
+                        .from("user_profiles")
+                        .upsert({
+
+                            id: data.user.id,
+
+                            user_id: userId,
+
+                            employee_name:
+                                Utils.cleanString(
+                                    this.authForm.employeeName
+                                ),
+
+                            is_admin: false
+
+                        }, {
+
+                            onConflict: "id"
+
+                        });
+
+                if (profileError) {
+
+                    alert(profileError.message);
 
                     return;
 
                 }
 
-                if (data.user) {
+                alert("Đăng ký thành công.");
 
-                    const { error: profileError } =
-                        await _supabase
-                            .from("user_profiles")
-                            .upsert({
+                this.authForm.isRegister = false;
 
-                                id: data.user.id,
+                this.authForm.password = "";
 
-                                user_id: uId,
-
-                                employee_name: this.authForm.employeeName.trim(),
-
-                                is_admin: false
-
-                            }, {
-
-                                onConflict: "id"
-
-                            });
-
-                    if (profileError) {
-
-                        alert(profileError.message);
-
-                        this.isLoading = false;
-
-                        return;
-
-                    }
-
-                    alert("Đăng ký thành công!");
-
-                    this.authForm.isRegister = false;
-
-                    this.authForm.password = "";
-
-                }
+                return;
 
             }
 
-            // ======================
+            //=========================
             // ĐĂNG NHẬP
-            // ======================
-            else {
+            //=========================
+            const {
+                data,
+                error
+            } =
+                await _supabase.auth.signInWithPassword({
 
-                const { data, error } =
-                    await _supabase.auth.signInWithPassword({
+                    email,
 
-                        email: emailFake,
+                    password: this.authForm.password
 
-                        password: this.authForm.password
+                });
 
-                    });
+            if (error) {
 
-                if (error) {
+                alert("Sai tài khoản hoặc mật khẩu.");
 
-                    alert("Sai tài khoản hoặc mật khẩu!");
-
-                    return;
-
-                }
-
-                await this.getUserProfile(data.user.id);
+                return;
 
             }
 
-        } catch (err) {
+            await this.getUserProfile(data.user.id);
+
+        }
+
+        catch (err) {
 
             console.error(err);
 
-        } finally {
+            alert("Có lỗi xảy ra.");
+
+        }
+
+        finally {
 
             this.isLoading = false;
 
@@ -177,18 +187,29 @@ const AuthMethods = {
     },
 
     // ==========================
-    // Lấy hồ sơ người dùng
+    // Lấy Profile
     // ==========================
     async getUserProfile(uuid) {
 
-        const { data } =
+        const {
+            data,
+            error
+        } =
             await _supabase
                 .from("user_profiles")
-                .select("user_id,employee_name,is_admin")
+                .select(
+                    "user_id, employee_name, is_admin"
+                )
                 .eq("id", uuid)
                 .single();
 
-        if (!data) return;
+        if (error) {
+
+            alert(error.message);
+
+            return;
+
+        }
 
         this.user = data;
 
@@ -214,6 +235,10 @@ const AuthMethods = {
         }
 
         this.user = null;
+
+        this.summaryList = [];
+
+        this.detailList = [];
 
         this.currentScreen = "login";
 
