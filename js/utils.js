@@ -156,5 +156,71 @@ const Utils = {
             String(value).trim() === ""
         );
     }
+    // ==========================
+    // Gom nhóm dữ liệu Summary
+    // ==========================
+    groupSummaryData(data) {
 
+        const map = {};
+
+        data.forEach(item => {
+
+            const dKey = this.cleanString(item.ngay_chuan) || "Chưa rõ";
+            const empKey = this.cleanString(item.nhan_vien) || "Chưa rõ";
+            const actionKey = this.normalizeAction(item.thao_tac);
+
+            const key = `${dKey}_${empKey}_${actionKey}`;
+
+            if (!map[key]) {
+                map[key] = {
+                    ngay_chuan: dKey,
+                    nhan_vien: empKey,
+                    thao_tac: actionKey,
+                    sl_stops_cn: 0,
+                    thu_nhap: 0
+                };
+            }
+
+            map[key].sl_stops_cn += this.toNumber(item.sl_stops_cn);
+            map[key].thu_nhap += this.toNumber(item.thu_nhap);
+
+        });
+
+        return Object.values(map);
+
+    },
+
+    // ==========================
+    // Sắp xếp dữ liệu
+    // ==========================
+    sortData(data, column, ascending = true) {
+
+        return data.sort((a, b) => {
+
+            let valA = a[column];
+            let valB = b[column];
+
+            if (column === "sl_stops_cn" || column === "thu_nhap") {
+
+                return ascending
+                    ? this.toNumber(valA) - this.toNumber(valB)
+                    : this.toNumber(valB) - this.toNumber(valA);
+
+            }
+
+            return ascending
+                ? String(valA).localeCompare(
+                    String(valB),
+                    undefined,
+                    { numeric: true }
+                )
+                : String(valB).localeCompare(
+                    String(valA),
+                    undefined,
+                    { numeric: true }
+                );
+
+        });
+
+    }
 };
