@@ -447,15 +447,7 @@ createApp({
         processedData = data
           .filter(item => this.isRowMatchingTime(item.ngay_chuan))
           .map(item => {
-            if (item.thao_tac) {
-              let tx = item.thao_tac.trim();
-              if (tx.includes('C') || tx.toLowerCase().includes('cấp đơn')) item.thao_tac = "Cấp đơn vào Autosorting";
-              else if (tx.includes('Đóng ki') || tx.toLowerCase().includes('đóng kiện autosorting')) item.thao_tac = "Đóng kiện Autosorting";
-              else if (tx.toLowerCase().includes('đóng kiện manual')) item.thao_tac = "Đóng kiện Manual";
-              else if (tx.toLowerCase().includes('rã kiện')) item.thao_tac = "Rã kiện tại kho Manual";
-              else if (tx.toLowerCase().includes('đổ bao')) item.thao_tac = "Đổ bao tải";
-              else if (tx.toLowerCase().includes('chia hàng')) item.thao_tac = "Chia hàng vào rổ";
-            }
+            item.thao_tac = Utils.normalizeAction(item.thao_tac);
             return item;
           });
       }
@@ -512,13 +504,7 @@ createApp({
         data.forEach(item => {
           if (!this.isRowMatchingTime(item.ngay_chuan)) return;
 
-          let key = item.thao_tac ? item.thao_tac.trim() : "Khác";
-          if (key.includes('C') || key.toLowerCase().includes('cấp đơn')) key = "Cấp đơn vào Autosorting";
-          else if (key.includes('Đóng ki') || key.toLowerCase().includes('đóng kiện autosorting')) key = "Đóng kiện Autosorting";
-          else if (key.toLowerCase().includes('đóng kiện manual')) key = "Đóng kiện Manual";
-          else if (key.toLowerCase().includes('rã kiện')) key = "Rã kiện tại kho Manual";
-          else if (key.toLowerCase().includes('đổ bao')) key = "Đổ bao tải";
-          else if (key.toLowerCase().includes('chia hàng')) key = "Chia hàng vào rổ";
+          const key = Utils.normalizeAction(item.thao_tac);
 
           chartMap[key] = (chartMap[key] || 0) + Number(item.sl_stops_cn || 0);
         });
