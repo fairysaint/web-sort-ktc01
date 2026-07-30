@@ -308,18 +308,11 @@ let resultData = Utils.groupSummaryData(allData);
 
       this.calculateInsights(resultData);
 
-      const col = this.sortState.summary.column;
-      const isAsc = this.sortState.summary.ascending;
-      resultData.sort((a, b) => {
-        let valA = a[col];
-        let valB = b[col];
-        if (col === 'sl_stops_cn' || col === 'thu_nhap') {
-          return isAsc ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-        }
-        return isAsc 
-          ? String(valA).localeCompare(String(valB), undefined, { numeric: true }) 
-          : String(valB).localeCompare(String(valA), undefined, { numeric: true });
-      });
+Utils.sortData(
+    resultData,
+    this.sortState.summary.column,
+    this.sortState.summary.ascending
+);
 
       this.summaryList = resultData.slice(from, to + 1);
     },
@@ -420,19 +413,11 @@ let resultData = Utils.groupSummaryData(allData);
       // Cập nhật lại tổng số dòng thực tế sau khi lọc để tính tổng số trang chính xác
       this.totalDetailRows = processedData.length;
 
-      const col = this.sortState.detail.column;
-      const isAsc = this.sortState.detail.ascending;
-      processedData.sort((a, b) => {
-        let valA = a[col];
-        let valB = b[col];
-        if (col === 'sl_stops_cn' || col === 'thu_nhap') {
-          return isAsc ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-        }
-        return isAsc 
-          ? String(valA).localeCompare(String(valB), undefined, { numeric: true }) 
-          : String(valB).localeCompare(String(valA), undefined, { numeric: true });
-      });
-
+      Utils.sortData(
+    processedData,
+    this.sortState.detail.column,
+    this.sortState.detail.ascending
+);
       // Cắt mảng chuẩn theo phân trang của bảng chi tiết
       this.detailList = processedData.slice(from, to + 1);
     },
