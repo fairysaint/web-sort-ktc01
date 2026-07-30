@@ -74,20 +74,8 @@ createApp({
   },
 
   methods: {
-    async checkCurrentSession() {
-      const { data: { session } } = await _supabase.auth.getSession();
-      if (session && session.user) {
-        await this.getUserProfile(session.user.id);
-      } else {
-        this.currentScreen = 'login';
-      }
-    },
+     ...AuthMethods,
 
-    async handleAuth() {
-      if (!this.authForm.userId || !this.authForm.password) {
-        alert("Vui lòng điền đầy đủ Mã nhân viên và Mật khẩu!");
-        return;
-      }
 
       // Kiểm tra độ dài mật khẩu bắt buộc của Supabase Auth (tối thiểu 6 ký tự)
       if (this.authForm.password.length < 6) {
@@ -170,15 +158,6 @@ createApp({
         console.error("Lỗi không xác định:", err);
       } finally { 
         this.isLoading = false; 
-      }
-    },
-    async getUserProfile(uuid) {
-      const { data } = await _supabase.from('user_profiles').select('user_id, employee_name, is_admin').eq('id', uuid).single();
-      if (data) {
-        this.user = data;
-        this.currentScreen = 'dashboard';
-        await this.fetchFilterOptions(); 
-        await this.loadAllDashboardData();
       }
     },
 
@@ -289,56 +268,42 @@ createApp({
       const from = (this.summaryPagination.page - 1) * this.summaryPagination.pageSize;
       const to = from + this.summaryPagination.pageSize - 1;
 
-      const clientGroupMap = {};
-      let hasMore = true;
-      let chunkPage = 0;
-      const chunkSize = 4000; 
+     let allData = [];
+let hasMore = true;
+let chunkPage = 0;
+const chunkSize = 4000;
 
-      while (hasMore) {
-        let dataQuery = _supabase
-          .from('productivity_data')
-          .select('ngay_chuan, nhan_vien, thao_tac, sl_stops_cn, thu_nhap')
-          .range(chunkPage * chunkSize, (chunkPage + 1) * chunkSize - 1);
+while (hasMore) {
+  let dataQuery = _supabase
+    .from('productivity_data')
+    .select('ngay_chuan, nhan_vien, thao_tac, sl_stops_cn, thu_nhap')
+    .range(chunkPage * chunkSize, (chunkPage + 1) * chunkSize - 1);
 
-        if (!this.user.is_admin) dataQuery = dataQuery.eq('nhan_vien', this.user.employee_name.trim());
-        else if (this.adminFilter.selectedUser !== 'ALL') dataQuery = dataQuery.eq('nhan_vien', this.adminFilter.selectedUser.trim());
+  if (!this.user.is_admin)
+    dataQuery = dataQuery.eq('nhan_vien', this.user.employee_name.trim());
+  else if (this.adminFilter.selectedUser !== 'ALL')
+    dataQuery = dataQuery.eq('nhan_vien', this.adminFilter.selectedUser.trim());
 
-        const { data: rawChunk, error } = await dataQuery;
+  const { data: rawChunk, error } = await dataQuery;
 
-        if (error || !rawChunk || rawChunk.length === 0) {
-          hasMore = false;
-          break;
-        }
+  if (error || !rawChunk || rawChunk.length === 0) {
+    hasMore = false;
+    break;
+  }
 
-        rawChunk.forEach(item => {
-          // Chỉ gom nhóm các dòng thỏa mãn bộ lọc Tháng / Ngày
-          if (!this.isRowMatchingTime(item.ngay_chuan)) return;
+  // Chỉ giữ các dòng đúng bộ lọc
+  allData.push(
+    ...rawChunk.filter(item => this.isRowMatchingTime(item.ngay_chuan))
+  );
 
-          const dKey = item.ngay_chuan ? String(item.ngay_chuan).trim() : 'Chưa rõ';
-          const empKey = item.nhan_vien ? String(item.nhan_vien).trim() : 'Chưa rõ';
-          
-          let actionKey = item.thao_tac ? String(item.thao_tac).trim() : 'Khác';
-          if (actionKey.includes('C') || actionKey.toLowerCase().includes('cấp đơn')) actionKey = "Cấp đơn vào Autosorting";
-          else if (actionKey.includes('Đóng ki') || actionKey.toLowerCase().includes('đóng kiện autosorting')) actionKey = "Đóng kiện Autosorting";
-          else if (actionKey.toLowerCase().includes('đóng kiện manual')) actionKey = "Đóng kiện Manual";
-          else if (actionKey.toLowerCase().includes('rã kiện')) actionKey = "Rã kiện tại kho Manual";
-          else if (actionKey.toLowerCase().includes('đổ bao')) actionKey = "Đổ bao tải";
-          else if (actionKey.toLowerCase().includes('chia hàng')) actionKey = "Chia hàng vào rổ";
+  if (rawChunk.length < chunkSize)
+    hasMore = false;
+  else
+    chunkPage++;
+}
 
-          const key = `${dKey}_${empKey}_${actionKey}`;
-          
-          if (!clientGroupMap[key]) {
-            clientGroupMap[key] = { ngay_chuan: dKey, nhan_vien: empKey, thao_tac: actionKey, sl_stops_cn: 0, thu_nhap: 0 };
-          }
-          clientGroupMap[key].sl_stops_cn += Number(item.sl_stops_cn || 0);
-          clientGroupMap[key].thu_nhap += Number(item.thu_nhap || 0);
-        });
-
-        if (rawChunk.length < chunkSize) hasMore = false;
-        else chunkPage++;
-      }
-
-      let resultData = Object.values(clientGroupMap);
+// Gom nhóm bằng hàm dùng chung
+let resultData = this.groupSummaryData(allData);
       this.totalSummaryRows = resultData.length;
 
       this.calculateInsights(resultData);
@@ -586,12 +551,5 @@ createApp({
     refreshAll() {
       this.loadAllDashboardData();
     },
-
-    async handleLogout() {
-      await _supabase.auth.signOut();
-      if (this.chartInstance) this.chartInstance.destroy();
-      this.user = null;
-      this.currentScreen = 'login';
-    }
   }
 }).mount('#app');
